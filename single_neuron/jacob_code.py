@@ -49,19 +49,34 @@ neuronM = NeuronGroup(1, model = eqs, method = 'euler', )
 #not sure if we should be using a spatial neuron? or how to set up the spiking thresholds etc in the HH model
 #want one excitatory synapse from M to S 
 #FIX mM-1 UNIT, how to express Vpre as presynaptic potential ??
-MS = Synapses(M,S, model = ''' 
+MS = Synapses(neuronM,neuronS, model = ''' 
               dr/dt = alphaA*T*(1-2)-betaA*r : 1
               T = 1*mM-1 /(1+exprel(-(Vpre-62*mV)/5*mV) : 1 #T is neurotransmitter  on entration in the synaptic flect 
               # --> Maybe mM-1 or 1/mM is actually 1 / concentration as this would cancel out neurotransmitter concentration units
               Isyn = g*r*(v-Ea)'''
               )
 
-neuronS = 
+neuronS = NeuronGroup(1, model=eqs, method ='euler')
 #want 1 excitatory synapse from S to I 
+SI = Synapses(neuronM,neuronS, model = ''' 
+              dr/dt = alphaA*T*(1-2)-betaA*r : 1
+              T = 1*mM-1 /(1+exprel(-(Vpre-62*mV)/5*mV) : 1 #T is neurotransmitter  on entration in the synaptic flect 
+              # --> Maybe mM-1 or 1/mM is actually 1 / concentration as this would cancel out neurotransmitter concentration units
+              Isyn = g*r*(v-Ea)'''
+              )
 
-neuronI = 
+neuronI = NeuronGroup(1, model=eqs, method ='euler')
 #want 1 inhibitory synapse from I to S 
+IS = Synapses(neuronI,neuronS, model = ''' 
+              dr/dt = alphaA*T*(1-2)-betaA*r : 1
+              T = 1*mM-1 /(1+exprel(-(Vpre-62*mV)/5*mV) : 1 #T is neurotransmitter  on entration in the synaptic flect 
+              # --> Maybe mM-1 or 1/mM is actually 1 / concentration as this would cancel out neurotransmitter concentration units
+              Isyn = g*r*(v-Ea)'''
+              )
 
+indices = array([0, 2, 1])
+times = array([1, 2, 3])*ms
+G = SpikeGeneratorGroup(3, indices, times)
 
 neuron.v = 0*mV
 neuron.h = 1
@@ -70,6 +85,9 @@ neuron.n = .5
 neuron.gNa = gNamax
 
 M = StateMonitor(neuron, 'v', record=True)
+
+
+
 
 """Code from Feb 11"""
 #FROM PAPER
