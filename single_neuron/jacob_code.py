@@ -51,7 +51,8 @@ neuronM = NeuronGroup(1, model = eqs, method = 'euler', )
 #FIX mM-1 UNIT, how to express Vpre as presynaptic potential ??
 MS = Synapses(M,S, model = ''' 
               dr/dt = alphaA*T*(1-2)-betaA*r : 1
-              T = 1*mM-1 /(1+exprel(-(Vpre-62*mV)/5*mV) : 1 #T is neurotransmitter  on entration in the synaptic flect
+              T = 1*mM-1 /(1+exprel(-(Vpre-62*mV)/5*mV) : 1 #T is neurotransmitter  on entration in the synaptic flect 
+              # --> Maybe mM-1 or 1/mM is actually 1 / concentration as this would cancel out neurotransmitter concentration units
               Isyn = g*r*(v-Ea)'''
               )
 
