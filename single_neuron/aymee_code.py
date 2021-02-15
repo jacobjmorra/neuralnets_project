@@ -14,7 +14,7 @@ start_scope()
 El = 10.6*mV #leak reversal potential
 ENa = 115*mV #sodium reversal potential
 EK = -12*mV #potassium reversal potential 
-EA = 60*mV
+EA = 60*mV 
 EG = -20*mV 
 
 # Conductances
@@ -39,6 +39,11 @@ alphaG = 5.0 * mM**-1*ms**-1 #UNITS
 betaG = 0.30 * ms**-1 #UNITS
 
 # Typical equations
+# the membrane potential is determined by: leaky current, Na and K currents, 
+# A constant current Iext0 that has specific values for each neuron
+# and the synaptic currents: excitatory (A) and inhibitory (G)
+# I added the synaptic currents here. In both cases, the conductances and 
+# revelsal potentials are contants and the only variable that is determined in the synapse is r
 eqs = '''
 dv/dt = (gl * (El-v) + gNa * m**3 * h * (ENa-v) + gK * n**4 * (EK-v) + Iext0 + gA*ra*(v - EA) + gG*rg*(v - EG))/Cm : volt
 dm/dt = alpham * (1-m) - betam * m : 1
@@ -55,31 +60,38 @@ ra : 1
 rg : 1
 '''
 
-# all the neurons are created in the same group. their role is determined by their connections
+# All the neurons are created in the same group. their role is determined by their connections
+# Neuron with index 0 is Sender, index 1 is Receiver, index 2 is Interneuron
 neurons = NeuronGroup(3, model = eqs, method = 'exponential_euler', threshold="v > -30*mV") 
 neurons.Iext0 = Iext
 
+# Excitatory synapse
 A = Synapses(neurons,neurons, 
              model = ''' 
              dr/dt = alphaA*T*(1-r)-betaA*r : 1
              T = 1 * mM/(1+exprel(-((0.001*v_pre/mV)-62)/5)) : mM''', 
              on_pre = 'ra_post = r'
              )
-              
+
+# Excitatory synapses from Sender to Reveiver (0 to 1) 
+# and Receiver to Interneuron (1 to 2)          
 A.connect(i = [0, 1], j = [1, 2])
 
+# Inhibitory synapse
 G = Synapses(neurons,neurons, 
              model = ''' 
              dr/dt = alphaG*T*(1-r)-betaG*r : 1
              T = 1 * mM/(1+exprel(-((0.001*v_pre/mV)-62)/5)) : mM''', 
              on_pre = 'rg_post = r'
              )
-
+# Inhibitory synapses from Interneuron to Reveiver (2 to 1) 
 G.connect(i = [2], j = [1]) 
 
+# Monitor variables
 M = StateMonitor(neurons, 'v', record=True)
 S = SpikeMonitor(neurons, record=True)
 
+# Run simulation
 run( 1 * second, report='text' )
 
 plot(M.v[0])
