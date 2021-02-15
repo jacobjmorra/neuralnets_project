@@ -19,17 +19,18 @@ gK = 36*msiemens/cm**2
 
 #note: these are given in paper but not sure what these units are or how to call them in brian
 #Jacob note: this is "molar" in brian2 --- https://brian2.readthedocs.io/en/stable/user/equations.html
-alphaA = 1.1 * nmolar-1 * ms-1 #FIGURE OUT THESE UNITS --> DONE
-betaA = 0.19 * ms-1 #UNITS? --> DONE
-alphaG = 5.0 * mmolar-1 * ms-1 #UNITS? --> DONE
-betaG = 0.30 * ms-1 #UNITS? -->DONE
+alphaA = 1.1 * nmolar**-1 * ms**-1 #FIGURE OUT THESE UNITS --> DONE
+betaA = 0.19 * ms**-1 #UNITS? --> DONE
+alphaG = 5.0 * mmolar**-1 * ms**-1 #UNITS? --> DONE
+betaG = 0.30 * ms**-1 #UNITS? -->DONE
 Ea = 60*mV
 EG = -20*mV
 
 #NEED TO FIGURE OUT MORPHOLOGY (do we need this?? they don't mention anything other than the area listed below)
 #it's not needed to my knowledge, but a motor neuron is around 100 microns or 0.1 mm in diameter
-morpho = Section(diameter = 0.1 * mm)
-morpho.area = 30*np.pi*um**2
+#morpho = Section(diameter = 0.1 * mm * np.array([1,1]))
+morpho = Soma(50*um)  # chosen for a target Rm -> taken from https://brian2.readthedocs.io/en/2.0rc/examples/frompapers.Brette_2012.Fig1.html
+#morpho.area = 30*np.pi*um**2
 
 # MODEL EQUATIONS - not sure if the units line up here!!!! most of this is from the HH example on brian, but i've filled things
 #in / made small changes so they match the paper
@@ -66,21 +67,22 @@ neuronI = SpatialNeuron(morphology=morpho, model=eqs, method="exponential_euler"
 #FIX mM-1 UNIT, how to express Vpre as presynaptic potential ??
 MS = Synapses(neuronM,neuronS, model = ''' 
               dr/dt = alphaA*T*(1-2)-betaA*r : 1
-              T = 1 /(1+exprel(-(v_pre-62*mV)/5*mV)) : 1 #T is neurotransmitter  on entration in the synaptic flect
-              Isyn = g*r*(v-Ea)''')
+              T = 1 /(1+exprel(-(v_pre-62*mV)/5*mV)) : 1
+              Isyn = g*r*(v-Ea): 1''')
 
 #want 1 excitatory synapse from S to I
 SI = Synapses(neuronS,neuronI, model = ''' 
               dr/dt = alphaA*T*(1-2)-betaA*r : 1
               T = 1 /(1+exprel(-(v_pre-62*mV)/5*mV)) : 1 #T is neurotransmitter  on entration in the synaptic flect
-              Isyn = g*r*(v-Ea)''')
+              Isyn = g*r*(v-Ea): 1''')
 
 #want 1 inhibitory synapse from I to S
 IS = Synapses(neuronI,neuronS, model = ''' 
               dr/dt = alphaG*T*(1-2)-betaG*r : 1
               T = 1 /(1+exprel(-(v_pre-62*mV)/5*mV)) : 1 #T is neurotransmitter  on entration in the synaptic flect
-              Isyn = g*r*(v-Eg)''')
+              Isyn = g*r*(v-Eg):1''')
 
+"""
 #these initial values come from the example on brian
 neuronM.v = 0*mV
 neuronM.h = 1
@@ -99,10 +101,11 @@ neuronI.h = 1
 neuronI.m = 0
 neuronI.n = .5
 neuronI.gNa = gNa0
+"""
 
 M = StateMonitor(neuronS, 'v', record=True)
 
 import matplotlib.pyplot as plt
 plt.figure(figsize=(15, 5))
-plt.plot(M.t / ms, M.v[0])
+plt.plot(M.t, M.v[0])
 plt.show()
