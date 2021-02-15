@@ -1,9 +1,12 @@
-#code for midterm project
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Feb 15 13:03:20 2021
+
+@author: Alex
+"""
 
 from brian2 import *
-import numpy as np
-
-#PARAMETERS
+from scipy import stats
 
 defaultclock.dt = 0.01*ms
 
@@ -24,7 +27,7 @@ betaG = 0.30 * ms** -1
 EA = 60*mV
 EG = -20*mV 
 
-# MODEL EQUATIONS 
+# Typical equations
 eqs = '''
 Im = gl * (El-v) + gNa * m**3 * h * (ENa-v) + gK * n**4 * (EK-v) : amp/meter**2
 I : amp (point current) # applied current
@@ -40,7 +43,6 @@ betan = 0.125*exp(-v/(80*mV))/ms : Hz
 gNa : siemens/meter**2
 '''
 
-#CREATE NEURONS
 neuronM = SpatialNeuron(morphology=morpho, model=eqs, method="exponential_euler",
                        refractory="m > 0.4", threshold="m > 0.5",
                        Cm=1*uF/cm**2, Ri=35.4*ohm*cm)
@@ -66,21 +68,6 @@ neuronS.gNa = gNa0
 monS = StateMonitor(neuronS, 'v', record=True)
 spikesS = SpikeMonitor(neuronS)
 
-neuronI = SpatialNeuron(morphology=morpho, model=eqs, method="exponential_euler",
-                       refractory="m > 0.4", threshold="m > 0.5",
-                       Cm=1*uF/cm**2, Ri=35.4*ohm*cm)
-neuronI.v = 0*mV
-neuronI.h = 1
-neuronI.m = 0
-neuronI.n = .5
-neuronI.I = 0*amp
-neuronI.gNa = gNa0
-monI = StateMonitor(neuronS, 'v', record=True)
-spikesI = SpikeMonitor(neuronS)
-
-#CREATE SYNAPSES
-
-#one excitatory synapse from M to S
 MS = Synapses(neuronM,neuronS, '''
               dr/dt = (alphaA*T*(1-r)-betaA*r) : 1
               T = 1/(1+exprel(-((0.001*v_pre/mV)-62)/5))*mM : mM''',
@@ -89,23 +76,26 @@ MS = Synapses(neuronM,neuronS, '''
               I = gNa0*r*(v_post - EA)*(meter**2) ''')
 MS.connect()
 
-#one excitatory synapse from S to I 
-SI = Synapses(neuronS,neuronI, '''
-              dr/dt = (alphaA*T*(1-r)-betaA*r) : 1
-              T = 1/(1+exprel(-((0.001*v_pre/mV)-62)/5))*mM : mM''',
-              
-              on_post = '''
-              I = gNa0*r*(v_post - EA)*(meter**2) ''')
-SI.connect()
 
-#one inhibitory synapse from I to S 
-IS = Synapses(neuronI,neuronS, '''
-              dr/dt = (alphaG*T*(1-r)-betaG*r) : 1
-              T = 1/(1+exprel(-((0.001*v_pre/mV)-62)/5))*mM : mM''',
-              
-              on_post = '''
-              I = gK*r*(v_post - EG)*(meter**2) ''')
-SI.connect()
+run(5*ms, report='text')
+neuronM.I[0] = 1*uA # current injection at one end
+neuronS.I[0] = 1*uA # current injection at one end
+'''
+run(50*ms, report='text')
+neuronM.I[0] = 1*uA # current injection at one end
+neuronS.I[0] = 1*uA # current injection at one end
+run(3*ms)
+neuronM.I = 0*amp
+neuronS.I = 0*amp
+run(50*ms, report='text')
+'''
 
+plot()
+for i in range(10):
+    plot(monM.t/ms, monM.v.T[:, i*100]/mV)
+ylabel('v')
 
-
+plot()
+for i in range(10):
+    plot(monS.t/ms, monS.v.T[:, i*100]/mV)
+ylabel('v')
