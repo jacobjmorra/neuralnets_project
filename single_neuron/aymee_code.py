@@ -33,9 +33,9 @@ Iext = [Iext_S, Iext_I, Iext_R]
 # Membrane capacitance
 Cm = pi*9e-6 *farad
 
-alphaA = 1.1 * mmolar**-1*ms**-1 #FIGURE OUT THESE UNITS
+alphaA = 1.1 * mM**-1*ms**-1 #FIGURE OUT THESE UNITS
 betaA = 0.19 * ms**-1 #UNITS
-alphaG = 5.0 * mmolar**-1*ms**-1 #UNITS 
+alphaG = 5.0 * mM**-1*ms**-1 #UNITS 
 betaG = 0.30 * ms**-1 #UNITS
 
 # Typical equations
@@ -55,14 +55,14 @@ ra : 1
 rg : 1
 '''
 
-# all the neurons are created in the same group. 
-neurons = NeuronGroup(3, model = eqs, method = 'exponential_euler', refractory="m > 0.4", threshold="m > 0.5") 
+# all the neurons are created in the same group. their role is determined by their connections
+neurons = NeuronGroup(3, model = eqs, method = 'exponential_euler', threshold="v > -30*mV") 
 neurons.Iext0 = Iext
 
 A = Synapses(neurons,neurons, 
              model = ''' 
              dr/dt = alphaA*T*(1-r)-betaA*r : 1
-             T = 1 * mmolar**-1 /(1+exprel(-((0.001*v_pre/mV)-62)/5)) : mmolar**-1''', 
+             T = 1 * mM/(1+exprel(-((0.001*v_pre/mV)-62)/5)) : mM''', 
              on_pre = 'ra_post = r'
              )
               
@@ -70,14 +70,18 @@ A.connect(i = [0, 1], j = [1, 2])
 
 G = Synapses(neurons,neurons, 
              model = ''' 
-             dr/dt = alphaG*T*(1-2)-betaG*r : 1
-             T = 1 * mmolar**-1/(1+exprel(-((0.001*v_pre/mV)-62)/5)) : mmolar**-1''', 
+             dr/dt = alphaG*T*(1-r)-betaG*r : 1
+             T = 1 * mM/(1+exprel(-((0.001*v_pre/mV)-62)/5)) : mM''', 
              on_pre = 'rg_post = r'
              )
 
 G.connect(i = [2], j = [1]) 
 
 M = StateMonitor(neurons, 'v', record=True)
-#S = SpikeMonitor(neurons, record=True)
+S = SpikeMonitor(neurons, record=True)
 
 run( 1 * second, report='text' )
+
+plot(M.v[0])
+plot(M.v[1])
+plot(M.v[2])
