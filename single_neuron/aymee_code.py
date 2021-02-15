@@ -1,4 +1,5 @@
 #code for midterm project
+
 from brian2 import *
 import numpy as np
 
@@ -32,9 +33,9 @@ Iext = [Iext_S, Iext_I, Iext_R]
 # Membrane capacitance
 Cm = pi*9e-6 *farad
 
-alphaA = 1.1 * mmole**-1*ms**-1 #FIGURE OUT THESE UNITS
+alphaA = 1.1 * mmolar**-1*ms**-1 #FIGURE OUT THESE UNITS
 betaA = 0.19 * ms**-1 #UNITS
-alphaG = 5.0 * mmole**-1*ms**-1 #UNITS 
+alphaG = 5.0 * mmolar**-1*ms**-1 #UNITS 
 betaG = 0.30 * ms**-1 #UNITS
 
 # Typical equations
@@ -60,8 +61,8 @@ neurons.Iext0 = Iext
 
 A = Synapses(neurons,neurons, 
              model = ''' 
-             dr/dt = alphaA*T*(1-2)-betaA*r : 1
-             T = 1 /(1+exprel(-(v_pre-62*mV)/5*mV)) : 1''', 
+             dr/dt = alphaA*T*(1-r)-betaA*r : 1
+             T = 1 * mmolar**-1 /(1+exprel(-((0.001*v_pre/mV)-62)/5)) : mmolar**-1''', 
              on_pre = 'ra_post = r'
              )
               
@@ -70,7 +71,7 @@ A.connect(i = [0, 1], j = [1, 2])
 G = Synapses(neurons,neurons, 
              model = ''' 
              dr/dt = alphaG*T*(1-2)-betaG*r : 1
-             T = 1 /(1+exprel(-(v_pre-62*mV)/5*mV)) : 1''', 
+             T = 1 * mmolar**-1/(1+exprel(-((0.001*v_pre/mV)-62)/5)) : mmolar**-1''', 
              on_pre = 'rg_post = r'
              )
 
