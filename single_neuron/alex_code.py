@@ -1,113 +1,93 @@
-#code for midterm project
+#midterm code 
 
 from brian2 import *
 import numpy as np
 
-#PARAMETERS
+start_scope()
 
-defaultclock.dt = 0.01*ms
+num_neurons = 3
+duration = 1*second
 
-morpho = Cylinder(length=10*cm, diameter=2*238*um, n=1000, type='axon')
+# Parameters
+area = 20000*umetre**2
+Cm = 1*ufarad*cm**-2 * area
+gl = 5e-5*siemens*cm**-2 * area
+El = -65*mV
+EK = -90*mV
+ENa = 50*mV
+g_na = 100*msiemens*cm**-2 * area
+g_kd = 30*msiemens*cm**-2 * area
+VT = -63*mV
 
-El = 10.6*mV #leak reversal potential
-ENa = 115*mV #sodium reversal potential
-EK = -12*mV #potassium reversal potential 
+# Constant current, determines neuron excitability
+Iext_S = 28e-11 *amp
+Iext_I = 28e-11 *amp
+Iext_R = 28e-11 *amp # variable
+Iext_values = [Iext_S, Iext_I, Iext_R]
 
-gl = 0.3*msiemens/cm**2
-gNa0 = 120*msiemens/cm**2
-gK = 36*msiemens/cm**2
+# Synapses parameters
+gA = 10 * msiemens
+gG = 20 * msiemens # variable 
+EA = 0*mV #shifted down 60mV from paper
+EG = -80*mV #shifted down 60mV from paper
+alphaA = 1.1 * mM**-1*ms**-1 #FIGURE OUT THESE UNITS
+betaA = 0.19 * ms**-1 #UNITS
+alphaG = 5.0 * mM**-1*ms**-1 #UNITS 
+betaG = 0.30 * ms**-1 #UNITS
 
-alphaA = 1.1 * nM**-1 * ms**-1 
-betaA = 0.19 * ms**-1 
-alphaG = 5.0 * mM**-1 * ms**-1 
-betaG = 0.30 * ms** -1 
-EA = 60*mV
-EG = -20*mV 
+# The model
+eqs = Equations('''
+dv/dt = (gl*(El-v) - g_na*(m*m*m)*h*(v-ENa) - g_kd*(n*n*n*n)*(v-EK) + Iext + Isyn)/Cm : volt
+dm/dt = 0.32*(mV**-1)*4*mV/exprel((13.*mV-v+VT)/(4*mV))/ms*(1-m)-0.28*(mV**-1)*5*mV/exprel((v-VT-40.*mV)/(5*mV))/ms*m : 1
+dn/dt = 0.032*(mV**-1)*5*mV/exprel((15.*mV-v+VT)/(5*mV))/ms*(1.-n)-.5*exp((10.*mV-v+VT)/(40.*mV))/ms*n : 1
+dh/dt = 0.128*exp((17.*mV-v+VT)/(18.*mV))/ms*(1.-h)-4./(1+exp((40.*mV-v+VT)/(5.*mV)))/ms*h : 1
+Iext : amp
+Isyn: amp
+''')
 
-# MODEL EQUATIONS 
-eqs = '''
-Im = gl * (El-v) + gNa * m**3 * h * (ENa-v) + gK * n**4 * (EK-v) : amp/meter**2
-I : amp (point current) # applied current
-dm/dt = alpham * (1-m) - betam * m : 1
-dn/dt = alphan * (1-n) - betan * n : 1
-dh/dt = alphah * (1-h) - betah * h : 1
-alpham = (0.1/mV) * 10*mV/exprel((-v+25*mV)/(10*mV))/ms : Hz
-betam = 4 * exp(-v/(18*mV))/ms : Hz
-alphah = 0.07 * exp(-v/(20*mV))/ms : Hz
-betah = 1/(exp((-v+30*mV) / (10*mV)) + 1)/ms : Hz
-alphan = (0.01/mV) * 10*mV/exprel((-v+10*mV)/(10*mV))/ms : Hz
-betan = 0.125*exp(-v/(80*mV))/ms : Hz
-gNa : siemens/meter**2
-'''
+# Threshold and refractoriness are only used for spike counting
+group = NeuronGroup(num_neurons, eqs,
+                    threshold='v > -40*mV',
+                    refractory='v > -40*mV',
+                    method='exponential_euler')
+group.v = El
+group.Iext = Iext_values
+#group.I = '0.7*nA * i / num_neurons'
 
-#CREATE NEURONS
-
-neuronM = SpatialNeuron(morphology=morpho, model=eqs, method="exponential_euler",
-                       refractory="m > 0.4", threshold="m > 0.5",
-                       Cm=1*uF/cm**2, Ri=35.4*ohm*cm)
-neuronM.v = 0*mV
-neuronM.h = 1
-neuronM.m = 0
-neuronM.n = .5
-neuronM.I = 0*amp
-neuronM.gNa = gNa0
-monM = StateMonitor(neuronM, 'v', record=True)
-spikesM = SpikeMonitor(neuronM)
-
-
-neuronS = SpatialNeuron(morphology=morpho, model=eqs, method="exponential_euler",
-                       refractory="m > 0.4", threshold="m > 0.5",
-                       Cm=1*uF/cm**2, Ri=35.4*ohm*cm)
-neuronS.v = 0*mV
-neuronS.h = 1
-neuronS.m = 0
-neuronS.n = .5
-neuronS.I = 0*amp
-neuronS.gNa = gNa0
-monS = StateMonitor(neuronS, 'v', record=True)
-spikesS = SpikeMonitor(neuronS)
-
-neuronI = SpatialNeuron(morphology=morpho, model=eqs, method="exponential_euler",
-                       refractory="m > 0.4", threshold="m > 0.5",
-                       Cm=1*uF/cm**2, Ri=35.4*ohm*cm)
-neuronI.v = 0*mV
-neuronI.h = 1
-neuronI.m = 0
-neuronI.n = .5
-neuronI.I = 0*amp
-neuronI.gNa = gNa0
-monI = StateMonitor(neuronS, 'v', record=True)
-spikesI = SpikeMonitor(neuronS)
-
-#CREATE SYNAPSES
-
-#one excitatory synapse from M to S
-MS = Synapses(neuronM,neuronS, '''
-              dr/dt = (alphaA*T*(1-r)-betaA*r) : 1
-              T = 1/(1+exprel(-((0.001*v_pre/mV)-62)/5))*mM : mM''',
+A = Synapses(group,group, 
+             model = ''' 
+               dr/dt = alphaA*T*(1-r)-betaA*r : 1
+               T = 1 * mM/(1+exprel(-((0.001*v_pre/mV)-62)/5)) : mM
+               IA = gA*r*(v - EA) : amp''', 
+               on_pre = 'Isyn += IA', method = 'euler'
+               )
               
-              on_post = '''
-              I = gNa0*r*(v_post - EA)*(meter**2) ''')
-MS.connect()
 
-#one excitatory synapse from S to I 
-SI = Synapses(neuronS,neuronI, '''
-              dr/dt = (alphaA*T*(1-r)-betaA*r) : 1
-              T = 1/(1+exprel(-((0.001*v_pre/mV)-62)/5))*mM : mM''',
-              
-              on_post = '''
-              I = gNa0*r*(v_post - EA)*(meter**2) ''')
-SI.connect()
+# Excitatory synapses from Sender to Reveiver (0 to 1) 
+# and Receiver to Interneuron (1 to 2)          
+A.connect(i = [0, 1], j = [1, 2])
 
-#one inhibitory synapse from I to S 
-IS = Synapses(neuronI,neuronS, '''
-              dr/dt = (alphaG*T*(1-r)-betaG*r) : 1
-              T = 1/(1+exprel(-((0.001*v_pre/mV)-62)/5))*mM : mM''',
-              
-              on_post = '''
-              I = gK*r*(v_post - EG)*(meter**2) ''')
-IS.connect()
+# Inhibitory synapse
+G = Synapses(group,group, model = ''' 
+             dr/dt = alphaG*T*(1-r)-betaG*r : 1
+             T = 1 * mM/(1+exprel(-((0.001*v_pre/mV)-62)/5)) : mM
+             IG = gG*r*(v - EG) : amp''', 
+             on_pre = 'Isyn += IG', method = 'euler'
+             )
+                          
 
-run(100*ms)
+# # Inhibitory synapses from Interneuron to Reveiver (2 to 1) 
+G.connect(i = [2], j = [1]) 
 
+# Monitor variables
+monitorV = StateMonitor(group, 'v', record=True)
+monitorS = SpikeMonitor(group)
 
+run(duration)
+
+# plot(group.I/nA, monitor.count / duration)
+# xlabel('I (nA)')
+# ylabel('Firing rate (sp/s)')
+# show()
+
+plot(monitorV.v[1])
