@@ -41,6 +41,7 @@ gNa : siemens/meter**2
 '''
 
 #CREATE NEURONS
+
 neuronM = SpatialNeuron(morphology=morpho, model=eqs, method="exponential_euler",
                        refractory="m > 0.4", threshold="m > 0.5",
                        Cm=1*uF/cm**2, Ri=35.4*ohm*cm)
@@ -105,7 +106,8 @@ IS = Synapses(neuronI,neuronS, '''
               
               on_post = '''
               I = gK*r*(v_post - EG)*(meter**2) ''')
-SI.connect()
+IS.connect()
 
+run(100*ms)
 
 
