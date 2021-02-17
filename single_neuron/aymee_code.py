@@ -1,4 +1,4 @@
-#code for midterm project
+s#code for midterm project
 
 from brian2 import *
 import numpy as np
