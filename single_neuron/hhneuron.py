@@ -1,13 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Feb 17 11:38:00 2021
-
-@author: aymee
-"""
-
-from brian2 import *
-
 start_scope()
 
 num_neurons = 3
@@ -42,12 +32,11 @@ betaG = 0.30 * ms**-1 #UNITS
 
 # The model
 eqs = Equations('''
-dv/dt = (gl*(El-v) - g_na*(m*m*m)*h*(v-ENa) - g_kd*(n*n*n*n)*(v-EK) + Iext + Isyn)/Cm : volt
+dv/dt = (gl*(El-v) - g_na*(m*m*m)*h*(v-ENa) - g_kd*(n*n*n*n)*(v-EK) + Iext)/Cm : volt
 dm/dt = 0.32*(mV**-1)*4*mV/exprel((13.*mV-v+VT)/(4*mV))/ms*(1-m)-0.28*(mV**-1)*5*mV/exprel((v-VT-40.*mV)/(5*mV))/ms*m : 1
 dn/dt = 0.032*(mV**-1)*5*mV/exprel((15.*mV-v+VT)/(5*mV))/ms*(1.-n)-.5*exp((10.*mV-v+VT)/(40.*mV))/ms*n : 1
 dh/dt = 0.128*exp((17.*mV-v+VT)/(18.*mV))/ms*(1.-h)-4./(1+exp((40.*mV-v+VT)/(5.*mV)))/ms*h : 1
 Iext : amp
-Isyn : amp
 ''')
 
 # Threshold and refractoriness are only used for spike counting
@@ -59,29 +48,29 @@ group.v = El
 group.Iext = Iext_values
 #group.I = '0.7*nA * i / num_neurons'
 
-A = Synapses(group,group, 
-             model = ''' 
-             dr/dt = alphaA*T*(1-r)-betaA*r : 1
-             T = 1 * mM/(1+exprel(-((0.001*v_pre/mV)-62)/5)) : mM
-             IA = gA*r*(v - EA) : amp''', 
-             on_pre = 'Isyn_post += IA', method = 'euler'
-             )
+# A = Synapses(group,group, 
+#               model = ''' 
+#               dr/dt = alphaA*T*(1-r)-betaA*r : 1
+#               T = 1 * mM/(1+exprel(-((0.001*v_pre/mV)-62)/5)) : mM
+#               IA = gA*r*(v - EA) : amp''', 
+#               on_pre = 'Isyn += IA', method = 'euler'
+#               )
 
-# Excitatory synapses from Sender to Reveiver (0 to 1) 
-# and Receiver to Interneuron (1 to 2)          
-A.connect(i = [0, 1], j = [1, 2])
+# # Excitatory synapses from Sender to Reveiver (0 to 1) 
+# # and Receiver to Interneuron (1 to 2)          
+# A.connect(i = [0, 1], j = [1, 2])
 
-# Inhibitory synapse
-G = Synapses(group,group, 
-             model = ''' 
-             dr/dt = alphaG*T*(1-r)-betaG*r : 1
-             T = 1 * mM/(1+exprel(-((0.001*v_pre/mV)-62)/5)) : mM
-             IG = gG*r*(v - EG) : amp''', 
-             on_pre = 'Isyn_post += IG', method = 'euler'
-             )
+# # Inhibitory synapse
+# G = Synapses(group,group, 
+#              model = ''' 
+#              dr/dt = alphaG*T*(1-r)-betaG*r : 1
+#              T = 1 * mM/(1+exprel(-((0.001*v_pre/mV)-62)/5)) : mM
+#              IG = gG*r*(v - EG) : amp''', 
+#              on_pre = 'Isyn += IG', method = 'euler'
+#              )
 
-# Inhibitory synapses from Interneuron to Reveiver (2 to 1) 
-G.connect(i = [2], j = [1]) 
+# # Inhibitory synapses from Interneuron to Reveiver (2 to 1) 
+# G.connect(i = [2], j = [1]) 
 
 # Monitor variables
 monitorV = StateMonitor(group, 'v', record=True)
