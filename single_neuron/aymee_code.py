@@ -7,8 +7,8 @@ start_scope()
 
 #PARAMETERS
 
-#Iext = constant input current that sets the excitability for the neuron
-#Isyn = synaptic current - these depend on synapses and neuron - define later
+# Morphology parameters???
+#area = 30 * 30 * pi * umeter**2
 
 # Reversal potentials
 El = 10.6*mV #leak reversal potential
@@ -40,12 +40,10 @@ betaG = 0.30 * ms**-1 #UNITS
 
 # Typical equations
 # the membrane potential is determined by: leaky current, Na and K currents, 
-# A constant current Iext0 that has specific values for each neuron
-# and the synaptic currents: excitatory (A) and inhibitory (G)
-# I added the synaptic currents here. In both cases, the conductances and 
-# revelsal potentials are contants and the only variable that is determined in the synapse is r
+# a constant current Iext0 that has specific values for each neuron
+# and the synaptic currents.
 eqs = '''
-dv/dt = (gl * (El-v) + gNa * m**3 * h * (ENa-v) + gK * n**4 * (EK-v) + Iext0 + gA*ra*(v - EA) + gG*rg*(v - EG))/Cm : volt
+dv/dt = (gl * (El-v) + gNa * m**3 * h * (ENa-v) + gK * n**4 * (EK-v) + Iext0 + Isyn)/Cm : volt
 dm/dt = alpham * (1-m) - betam * m : 1
 dn/dt = alphan * (1-n) - betan * n : 1
 dh/dt = alphah * (1-h) - betah * h : 1
@@ -56,8 +54,7 @@ betah = 1/(exp((-v+30*mV) / (10*mV)) + 1)/ms : Hz
 alphan = (0.01/mV) * (10*mV-v)/exprel((-v+10*mV)/(10*mV))/ms : Hz
 betan = 0.125*exp(-v/(80*mV))/ms : Hz
 Iext0 : amp
-ra : 1
-rg : 1
+Isyn : amp
 '''
 
 # All the neurons are created in the same group. their role is determined by their connections
@@ -69,8 +66,9 @@ neurons.Iext0 = Iext
 A = Synapses(neurons,neurons, 
              model = ''' 
              dr/dt = alphaA*T*(1-r)-betaA*r : 1
-             T = 1 * mM/(1+exprel(-((0.001*v_pre/mV)-62)/5)) : mM''', 
-             on_pre = 'ra_post = r'
+             T = 1 * mM/(1+exprel(-((0.001*v_pre/mV)-62)/5)) : mM
+             IA = gA*r*(v - EA) : amp''', 
+             on_pre = 'Isyn_post += IA'
              )
 
 # Excitatory synapses from Sender to Reveiver (0 to 1) 
@@ -81,9 +79,11 @@ A.connect(i = [0, 1], j = [1, 2])
 G = Synapses(neurons,neurons, 
              model = ''' 
              dr/dt = alphaG*T*(1-r)-betaG*r : 1
-             T = 1 * mM/(1+exprel(-((0.001*v_pre/mV)-62)/5)) : mM''', 
-             on_pre = 'rg_post = r'
+             T = 1 * mM/(1+exprel(-((0.001*v_pre/mV)-62)/5)) : mM
+             IG = gG*r*(v - EG) : amp''', 
+             on_pre = 'Isyn_post += IG'
              )
+
 # Inhibitory synapses from Interneuron to Reveiver (2 to 1) 
 G.connect(i = [2], j = [1]) 
 
