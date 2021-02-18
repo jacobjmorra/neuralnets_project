@@ -25,24 +25,22 @@ Iext_I = 28e-11 *amp
 Iext_R = 28e-11 *amp # variable
 Iext_values = [Iext_S, Iext_I, Iext_R]
 
-# Synapses parameters
-gA = 10 * msiemens
-gG = 20 * msiemens # variable 
-EA = 0*mV #shifted down 60mV from paper
-EG = -80*mV #shifted down 60mV from paper
-alphaA = 1.1 * mM**-1*ms**-1 #FIGURE OUT THESE UNITS
-betaA = 0.19 * ms**-1 #UNITS
-alphaG = 5.0 * mM**-1*ms**-1 #UNITS 
-betaG = 0.30 * ms**-1 #UNITS
+w_e = 0.1*msiemens
+w_i = 0.4*msiemens
+Ee = 0*mV
+Ei = -80*mV
+taue = 5*ms
+taui = 10*ms
 
 # The model
 eqs = Equations('''
-dv/dt = (gl*(El-v) - g_na*(m*m*m)*h*(v-ENa) - g_kd*(n*n*n*n)*(v-EK) + Iext + Isyn)/Cm : volt
+dv/dt = (gl*(El-v) - g_na*(m*m*m)*h*(v-ENa) - g_kd*(n*n*n*n)*(v-EK) + Iext + g_e*(Ee-v) + g_i*(Ei-v))/Cm : volt
 dm/dt = 0.32*(mV**-1)*4*mV/exprel((13.*mV-v+VT)/(4*mV))/ms*(1-m)-0.28*(mV**-1)*5*mV/exprel((v-VT-40.*mV)/(5*mV))/ms*m : 1
 dn/dt = 0.032*(mV**-1)*5*mV/exprel((15.*mV-v+VT)/(5*mV))/ms*(1.-n)-.5*exp((10.*mV-v+VT)/(40.*mV))/ms*n : 1
 dh/dt = 0.128*exp((17.*mV-v+VT)/(18.*mV))/ms*(1.-h)-4./(1+exp((40.*mV-v+VT)/(5.*mV)))/ms*h : 1
+dg_e/dt = -g_e/taue : siemens
+dg_i/dt = -g_i/taui : siemens
 Iext : amp
-Isyn: amp
 ''')
 
 # Threshold and refractoriness are only used for spike counting
@@ -54,13 +52,7 @@ group.v = El
 group.Iext = Iext_values
 #group.I = '0.7*nA * i / num_neurons'
 
-A = Synapses(group,group, 
-             model = ''' 
-               dr/dt = alphaA*T*(1-r)-betaA*r : 1
-               T = 1 * mM/(1+exprel(-((0.001*v_pre/mV)-62)/5)) : mM
-               IA = gA*r*(v - EA) : amp''', 
-               on_pre = 'Isyn += IA', method = 'euler'
-               )
+A = Synapses(group,group, 'w: siemens', on_pre='g_e += w_e')
               
 
 # Excitatory synapses from Sender to Reveiver (0 to 1) 
@@ -68,12 +60,7 @@ A = Synapses(group,group,
 A.connect(i = [0, 1], j = [1, 2])
 
 # Inhibitory synapse
-G = Synapses(group,group, model = ''' 
-             dr/dt = alphaG*T*(1-r)-betaG*r : 1
-             T = 1 * mM/(1+exprel(-((0.001*v_pre/mV)-62)/5)) : mM
-             IG = gG*r*(v - EG) : amp''', 
-             on_pre = 'Isyn += IG', method = 'euler'
-             )
+G = Synapses(group,group, 'w: siemens', on_pre='g_i += w_i')
                           
 
 # # Inhibitory synapses from Interneuron to Reveiver (2 to 1) 
@@ -90,4 +77,6 @@ run(duration)
 # ylabel('Firing rate (sp/s)')
 # show()
 
+plot(monitorV.v[0])
 plot(monitorV.v[1])
+plot(monitorV.v[2])
