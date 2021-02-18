@@ -67,20 +67,30 @@ neuronI = SpatialNeuron(morphology=morpho, model=eqs, method="exponential_euler"
 #FIX mM-1 UNIT, how to express Vpre as presynaptic potential ??
 MS = Synapses(neuronM,neuronS, model = ''' 
               dr/dt = alphaA*T*(1-2)-betaA*r : 1
-              T = 1 /(1+exprel(-(v_pre-62*mV)/5*mV)) : 1
-              Isyn = g*r*(v-Ea): 1''')
+              T = 1/(1+exprel(-((0.001*v_pre/mV)-62)/5))*mM : mM''',
+
+              on_post = '''
+              I = gNa0*r*(v_post - EA)*(meter**2) ''')
 
 #want 1 excitatory synapse from S to I
 SI = Synapses(neuronS,neuronI, model = ''' 
               dr/dt = alphaA*T*(1-2)-betaA*r : 1
-              T = 1 /(1+exprel(-(v_pre-62*mV)/5*mV)) : 1 #T is neurotransmitter  on entration in the synaptic flect
-              Isyn = g*r*(v-Ea): 1''')
+              T = 1/(1+exprel(-((0.001*v_pre/mV)-62)/5))*mM : mM''',
+
+              on_post = '''
+              I = gNa0*r*(v_post - EA)*(meter**2) ''')
 
 #want 1 inhibitory synapse from I to S
 IS = Synapses(neuronI,neuronS, model = ''' 
               dr/dt = alphaG*T*(1-2)-betaG*r : 1
-              T = 1 /(1+exprel(-(v_pre-62*mV)/5*mV)) : 1 #T is neurotransmitter  on entration in the synaptic flect
-              Isyn = g*r*(v-Eg):1''')
+              T = 1/(1+exprel(-((0.001*v_pre/mV)-62)/5))*mM : mM''',
+
+              on_post = '''
+              I = gK*r*(v_post - EG)*(meter**2) ''')
+
+MS.connect()
+SI.connect()
+IS.connect()
 
 """
 #these initial values come from the example on brian
@@ -102,10 +112,13 @@ neuronI.m = 0
 neuronI.n = .5
 neuronI.gNa = gNa0
 """
+run(10 * msecond)
 
-M = StateMonitor(neuronS, 'v', record=True)
+M = StateMonitor(neuronI, 'v', record=True)
+S = SpikeMonitor(neuronI, variables='v')
 
-import matplotlib.pyplot as plt
-plt.figure(figsize=(15, 5))
-plt.plot(M.t, M.v[0])
-plt.show()
+print(S.t[:])
+#import matplotlib.pyplot as plt
+#plt.figure(figsize=(15, 5))
+#plt.plot(S.t, S.v[0])
+#plt.show()

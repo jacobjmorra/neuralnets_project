@@ -1,149 +1,129 @@
-"""Alex code"""
-#code for midterm project
+#Start with HH, adapt to our paper
 
 from brian2 import *
-import numpy as np
 
-#PARAMETERS
+#HH PARAMS
+num_neurons = 2
+duration = 2*second
 
-#Iext = constant input current that sets the excitability for the neuron
-#Isyn = synaptic current - these depend on synapses and neuron - define later
+# Parameters
+area = 20000*umetre**2
+Cm = 1*ufarad*cm**-2 * area
+gl = 5e-5*siemens*cm**-2 * area
+El = -65*mV
+EK = -90*mV
+ENa = 50*mV
+g_na = 100*msiemens*cm**-2 * area
+g_kd = 30*msiemens*cm**-2 * area
+VT = -63*mV
 
+# The model
+eqs = Equations('''
+dv/dt = (gl*(El-v) - g_na*(m*m*m)*h*(v-ENa) - g_kd*(n*n*n*n)*(v-EK) + I)/Cm : volt
+dm/dt = 0.32*(mV**-1)*4*mV/exprel((13.*mV-v+VT)/(4*mV))/ms*(1-m)-0.28*(mV**-1)*5*mV/exprel((v-VT-40.*mV)/(5*mV))/ms*m : 1
+dn/dt = 0.032*(mV**-1)*5*mV/exprel((15.*mV-v+VT)/(5*mV))/ms*(1.-n)-.5*exp((10.*mV-v+VT)/(40.*mV))/ms*n : 1
+dh/dt = 0.128*exp((17.*mV-v+VT)/(18.*mV))/ms*(1.-h)-4./(1+exp((40.*mV-v+VT)/(5.*mV)))/ms*h : 1
+I : amp
+''')
+
+
+#INITIALIZE 3 NEURONS
+# Threshold and refractoriness are only used for spike counting
+M = NeuronGroup(num_neurons, eqs,
+                    threshold='v > -40*mV',
+                    refractory='v > -40*mV',
+                    method='exponential_euler')
+M.v = El
+M.I = '0.7*nA * i / num_neurons'
+
+I = NeuronGroup(num_neurons, eqs,
+                    threshold='v > -40*mV',
+                    refractory='v > -40*mV',
+                    method='exponential_euler')
+I.v = El
+I.I = '0.7*nA * i / num_neurons'
+
+S = NeuronGroup(num_neurons, eqs,
+                    threshold='v > -40*mV',
+                    refractory='v > -40*mV',
+                    method='exponential_euler')
+S.v = El
+S.I = '0.7*nA * i / num_neurons'
+
+
+
+
+#PAPER PARAMS
+# Reversal potentials
 El = 10.6*mV #leak reversal potential
 ENa = 115*mV #sodium reversal potential
-EK = -12*mV #potassium reversal potential 
-
-gl = 2.7*np.pi*msiemens #leak current conductance 
-gNamax = 1080*np.pi*msiemens #sodium current max conductance 
-gK = 324*np.pi*msiemens #potassium current conductance
-
-alphaA = 1.1 * nM-1ms-1 () #FIGURE OUT THESE UNITS
-betaA = 0.19 * ms-1 #UNITS
-alphaG = 5.0 * mM-1ms-1 #UNITS 
-betaG = 0.30 * ms-1 #UNITS
-Ea = 60*mV
-EG = -20*mV 
-
-#NEED TO FIGURE OUT MORPHOLOGY 
-morpho = Section(diameter = )
-morpho.area = 30*np.pi*um**2
-
-# Typical equations
-eqs = '''
-Cm*dv/dt = gl * (El-v) + gNa * m**3 * h * (ENa-v) + gK * n**4 * (EK-v) + Iext + Isyn: amp/meter**2
-
-dm/dt = alpham * (1-m) - betam * m : 1
-dn/dt = alphan * (1-n) - betan * n : 1
-dh/dt = alphah * (1-h) - betah * h : 1
-alpham = (0.1/mV) * (10*mV-v)/exprel((-v+25*mV)/(10*mV))/ms : Hz
-betam = 4 * exp(-v/(18*mV))/ms : Hz
-alphah = 0.07 * exp(-v/(20*mV))/ms : Hz
-betah = 1/(exp((-v+30*mV) / (10*mV)) + 1)/ms : Hz
-alphan = (0.01/mV) * (10*mV-v)/exprel((-v+10*mV)/(10*mV))/ms : Hz
-betan = 0.125*exp(-v/(80*mV))/ms : Hz
-gNa : siemens/meter**2
-
-'''
-
-neuronM = NeuronGroup(1, model = eqs, method = 'euler', ) 
-#not sure if we should be using a spatial neuron? or how to set up the spiking thresholds etc in the HH model
-#want one excitatory synapse from M to S 
-#FIX mM-1 UNIT, how to express Vpre as presynaptic potential ??
-MS = Synapses(neuronM,neuronS, model = ''' 
-              dr/dt = alphaA*T*(1-2)-betaA*r : 1
-              T = 1*mM-1 /(1+exprel(-(Vpre-62*mV)/5*mV) : 1 #T is neurotransmitter  on entration in the synaptic flect 
-              # --> Maybe mM-1 or 1/mM is actually 1 / concentration as this would cancel out neurotransmitter concentration units
-              Isyn = g*r*(v-Ea)'''
-              )
-
-neuronS = NeuronGroup(1, model=eqs, method ='euler')
-#want 1 excitatory synapse from S to I 
-SI = Synapses(neuronM,neuronS, model = ''' 
-              dr/dt = alphaA*T*(1-2)-betaA*r : 1
-              T = 1*mM-1 /(1+exprel(-(Vpre-62*mV)/5*mV) : 1 #T is neurotransmitter  on entration in the synaptic flect 
-              # --> Maybe mM-1 or 1/mM is actually 1 / concentration as this would cancel out neurotransmitter concentration units
-              Isyn = g*r*(v-Ea)'''
-              )
-
-neuronI = NeuronGroup(1, model=eqs, method ='euler')
-#want 1 inhibitory synapse from I to S 
-IS = Synapses(neuronI,neuronS, model = ''' 
-              dr/dt = alphaA*T*(1-2)-betaA*r : 1
-              T = 1*mM-1 /(1+exprel(-(Vpre-62*mV)/5*mV) : 1 #T is neurotransmitter  on entration in the synaptic flect 
-              # --> Maybe mM-1 or 1/mM is actually 1 / concentration as this would cancel out neurotransmitter concentration units
-              Isyn = g*r*(v-Ea)'''
-              )
-
-indices = array([0, 2, 1])
-times = array([1, 2, 3])*ms
-G = SpikeGeneratorGroup(3, indices, times)
-
-neuron.v = 0*mV
-neuron.h = 1
-neuron.m = 0
-neuron.n = .5
-neuron.gNa = gNamax
-
-M = StateMonitor(neuron, 'v', record=True)
+EK = -12*mV #potassium reversal potential
+EA = 60*mV
+EG = -20*mV
+# Conductances
+gl = 2.7*np.pi*msiemens #leak current conductance
+gNa = 1080*np.pi*msiemens #sodium current max conductance
+gK = 324*np.pi*msiemens #potassium current max conductance
+gA = 10 * msiemens
+gG = 20 * msiemens # variable
+# Constant current, determines neuron excitability
+Iext_S = 28e-11 *amp
+Iext_I = 28e-11 *amp
+Iext_R = 28e-11 *amp # variable
+Iext = [Iext_S, Iext_I, Iext_R]
+# Membrane capacitance
+Cm = pi*9e-6 *farad
+alphaA = 1.1 * mM**-1*ms**-1 #FIGURE OUT THESE UNITS
+betaA = 0.19 * ms**-1 #UNITS
+alphaG = 5.0 * mM**-1*ms**-1 #UNITS
+betaG = 0.30 * ms**-1 #UNITS
+gNa0 = 120*msiemens/cm**2
 
 
+#INITIALIZE SYNAPSES
+# Excitatory synapse
+A1 = Synapses(M,S,
+             model = ''' 
+             dr/dt = (alphaA*T*(1-r)-betaA*r) : 1
+              T = 1/(1+exprel(-((0.001*v_pre/mV)-62)/5))*mM : mM''',
 
+              on_post = '''
+              I = gNa0*r*(v_post - EA)*(meter**2) ''')
 
-"""Code from Feb 11"""
-#FROM PAPER
+A2 = Synapses(S,I,
+             model = ''' 
+             dr/dt = (alphaA*T*(1-r)-betaA*r) : 1
+              T = 1/(1+exprel(-((0.001*v_pre/mV)-62)/5))*mM : mM''',
+              on_post = '''
+              I = gNa0*r*(v_post - EA)*(meter**2) ''')
 
-r = ? #resistance
-i(t) = ? #input current - modelled as step function
-a = 10*mV #oscillation amplitude
-f = ? #oscillation frequency (determined by entrainment function)
-b = ? #phase shift (determined by entrainment function)
-taum = 20*ms #membrane time constant
-vrest = -70*mV #membrane resting potential
-vth = -50*mV #membrane threshold
-#El = -80*mV #leak reversal potential
-#Ee = 0 * mV
+# Excitatory synapses (M to S, S to I)
+A1.connect()
+A2.connect()
 
-Fmin = 500*Hz; Fmax = 32000*Hz
-Fsd = 2500*Hz
+# Inhibitory synapse
+B1 = Synapses(I,S,
+             model =
+             '''dr/dt = (alphaG*T*(1-r)-betaG*r) : 1
+             T = 1/(1+exprel(-((0.001*v_pre/mV)-62)/5))*mM : mM''',
+              on_post = '''
+             I = gK*r*(v_post - EG) ''')
 
-pf = ? #preferred frequency
-#stim = single attended stimululs
-#stim.rhythm = rhythm of stimululs in Hz
-#31.5*Hz = normalization factor
-f(stim) = (|pf-stim.freq|)/31.5*kHz*(1/(2*stim.rhythm))
+# Inhibitory synapses from Interneuron to Reveiver (2 to 1)
+B1.connect()
 
-eqs = '''
-dv/dt = -((v-vrest)+r*i(t)+a*sin(2*np.pi*f*t+b))/taum : volt
-a : 1
-'''
+monitor = SpikeMonitor(M)
+SM = StateMonitor(M, 'v', record=1)
+SI = StateMonitor(I, 'v', record=1)
+SS = StateMonitor(S, 'v', record=1)
+run(duration)
 
-input = a * sin(2 * np.pi) #step current which, when turned on is a sine wave
+#plot(group.I/nA, monitor.count / duration)
+#xlabel('I (nA)')
+#ylabel('Firing rate (sp/s)')
+#plt.show()
 
-neuron = NeuronGroup(1, model=eqs, threshold='v > vth', reset='v = vrest',
-                      method='euler')
-
-
-
-#code for midterm project
-
-from brian2 import *
-import numpy as np
-import matplotlib.pyplot as plt
-
-start_scope()
-A = 2.5
-f = 10*Hz
-tau = 5*ms
-eqs = '''
-dv/dt = (I-v)/tau : 1
-I = A*sin(2*pi*f*t) : 1
-'''
-G = NeuronGroup(1, eqs, threshold='v>1', reset='v=0', method='euler')
-M = StateMonitor(G, variables=True, record=True)
-run(200*ms)
-plot(M.t/ms, M.v[0], label='v')
-plot(M.t/ms, M.I[0], label='I')
-xlabel('Time (ms)')
-ylabel('v')
-legend(loc='best')
+plot(SM.v[0], color = 'red')
+plot(SI.v[0], color = 'blue')
+plot(SS.v[0], color = 'black')
 plt.show()
