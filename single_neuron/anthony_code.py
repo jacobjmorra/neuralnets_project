@@ -24,13 +24,15 @@ def hh(duration = 2*second, plots = True):
 
     group = NeuronGroup(3, eqs, threshold='v > -40*mV', refractory='v > -40*mV', method='exponential_euler')
     group.v = El; group.I = '.7*nA * i / 3'
-    S = SpikeMonitor(group); M = StateMonitor(group, 'v', record = 0)
+    spikes = SpikeMonitor(group); M = StateMonitor(group, 'v', record = 0)
+    S = StateMonitor(group, 'v', record = 1); I_m = StateMonitor(group, 'v', record = 2)
     run(duration)
 
     if plots:
-        subplot(1,2,1); plot(group.I/nA, S.count / duration, "k.-", linewidth = .5) # Current vs. FR, 1 datum per neuron
+        subplot(1,2,1); plot(group.I/nA, spikes.count / duration, "k.-", linewidth = .5) # Current vs. FR, 1 datum per neuron
         xlabel('Input Current (nA)'); ylabel('Firing rate (Hz)')
         subplot(1,2,2); plot(M.t/ms, M.v[0], "k-", linewidth = .5)
+        plot(S.t/ms, S.v[0], "r--", linewidth = .5); plot(I_m.t/ms, I_m.v[0], "b--", linewidth = .5)
         xlabel('Time (ms)'); ylabel('Voltage (mV)')
         subplots_adjust(wspace=.5); show()
 hh(2*second)
