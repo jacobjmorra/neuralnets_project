@@ -1,37 +1,30 @@
 # https://brian2.readthedocs.io/en/stable/examples/IF_curve_Hodgkin_Huxley.html
 from brian2 import *
 
-def hh(duration = 2*second, plots = True):
-    start_scope()
-    Cm = 9*pi*ufarad
-    gl = 2.7*pi*msiemens
-    g_na, g_kd = 1080*pi*msiemens, 324*pi*msiemens # Conductances
-    El, EK, ENa = 10.6*mV, -12*mV, 115*mV # Potentials, El is resting
-    VT = -63*mV
+def hh(duration = 2*second, fr_report = 1*second, plots = True):
+    start_scope(); area = 20000*umetre**2 
 
-    w_e, w_i = .1*msiemens, .4*msiemens
-    Ee, Ei = 0*mV, -80*mV
-    taue, taui = 5*ms, 10*ms
+    # Parameters
+    Cm = 1*ufarad*cm**-2 * area
+    gl, g_na, g_kd = 5e-5*siemens*cm**-2 * area, 100*msiemens*cm**-2 * area, 30*msiemens*cm**-2 * area
+    El, EK, ENa = -65*mV, -90*mV, 50*mV
+    VT = -63*mV
+    w_e, w_i = .1*msiemens, .4*msiemens # Syanptic weights
+    Ee, Ei = 0*mV, -80*mV # Synaptic potentials
+    taue, taui = 5*ms, 10*ms # Synapse time constants
 
     eqs = Equations('''
     dv/dt = (g_na*(m**3)*h*(ENa-v) + g_kd*(n**4)*(EK-v) + gl*(El-v) + ge*(Ee-v) + gi*(Ei-v) + Iext)/Cm : volt
-    dm/dt = (Am*v*(1-m) - Bm*v*m)/volt: 1
-    dn/dt = (An*v*(1-m) - Bn*v*m)/volt : 1
-    dh/dt = (Ah*v*(1-m) - Bh*v*m)/volt : 1
+    dm/dt = 0.32*(mV**-1)*4*mV/exprel((13.*mV-v+VT)/(4*mV))/ms*(1-m)-0.28*(mV**-1)*5*mV/exprel((v-VT-40.*mV)/(5*mV))/ms*m : 1
+    dn/dt = 0.032*(mV**-1)*5*mV/exprel((15.*mV-v+VT)/(5*mV))/ms*(1.-n)-.5*exp((10.*mV-v+VT)/(40.*mV))/ms*n : 1
+    dh/dt = 0.128*exp((17.*mV-v+VT)/(18.*mV))/ms*(1.-h)-4./(1+exp((40.*mV-v+VT)/(5.*mV)))/ms*h : 1
     dge/dt = -ge/taue : siemens
     dgi/dt = -gi/taui : siemens
-
-    An = ((10*mV - v)/volt) / ((100*exp( ((10*mV - v)/10)/volt )-1)*ms) : Hz
-    Bn = .125 * exp(-v/(80*volt)) / ms : Hz
-    Am = ((25*mV - v)/volt) / ((10*exp( ((25*mV - v)/10)/volt )-1)*ms) : Hz
-    Bm = 4 * exp(-v/(18*volt)) / ms : Hz
-    Ah = .07 * exp(-v/(20*volt)) / ms : Hz
-    Bh = 1 / ((exp( ((30*mV - v)/10)/volt )+1)*ms) : Hz
     Iext : amp
     ''')
 
     group = NeuronGroup(3, eqs, threshold='v > -40*mV', refractory='v > -40*mV', method='exponential_euler')
-    group.v = El; group.Iext = '28e-11*amp * i / 3'
+    group.v = El; group.Iext = ".5*nA" # Initializing voltage and external current
 
     # Creating spike monitor, voltage monitors, and synapses
     spikes = SpikeMonitor(group)
@@ -43,9 +36,10 @@ def hh(duration = 2*second, plots = True):
     run(duration)
 
     if plots:
-        plot(M.t/ms, M.v[0], "g--", linewidth = .5)
-        plot(S.t/ms, S.v[0], "r--", linewidth = .5)
-        plot(I.t/ms, I.v[0], "b--", linewidth = .5)
+        plot(M.t/ms, M.v[0], "k-", linewidth = .5)
+        plot(S.t/ms, S.v[0], "r-", linewidth = .5, alpha = .8)
+        plot(I.t/ms, I.v[0], "g-", linewidth = .5, alpha = .8)
         xlabel('Time (ms)'); ylabel('Voltage (mV)'); show()
-    return(spikes.count/duration)
-print(hh(2*second))
+    endrates = [len(spikes.spike_trains()[i][spikes.spike_trains()[i]/second > 1])/fr_report for i in range(3)]
+    return(endrates)
+print(hh())
