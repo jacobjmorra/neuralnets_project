@@ -1,7 +1,7 @@
 # https://brian2.readthedocs.io/en/stable/examples/IF_curve_Hodgkin_Huxley.html
 from brian2 import *
 
-def hh(duration = 2*second, gA = 10*nsiemens, gG = 20*nsiemens, fr_report = 1*second, plots = True):
+def hh(duration = 2*second, gA = 10*nsiemens, gG = 20*nsiemens, plots = True):
     start_scope(); area = 20000*umetre**2 
 
     # Parameters
@@ -34,14 +34,23 @@ def hh(duration = 2*second, gA = 10*nsiemens, gG = 20*nsiemens, fr_report = 1*se
     MSSI = Synapses(group, group, 'w: siemens', on_pre='ge += w_e'); MSSI.connect(i = [0,1], j = [1, 2])
     IS = Synapses(group, group, 'w: siemens', on_pre='gi += w_i'); IS.connect(i = [2], j = [1])
     run(duration)
+    # print("\nFiring Rates (M/S/I):\t\t%s" % spikes.count / duration)
 
     if plots:
         plot(M.t/ms, M.v[0], "k-", linewidth = .5)
         plot(S.t/ms, S.v[0], "r-", linewidth = .5, alpha = .8)
         plot(I.t/ms, I.v[0], "g--", linewidth = .5, alpha = .8)
-        xlim(1000,1050)
         xlabel('Time (ms)'); ylabel('Voltage (mV)'); show()
-    endrates = [len(spikes.spike_trains()[i][spikes.spike_trains()[i]/second > 1])/fr_report for i in range(3)]
-    print(spikes.count / duration)
-    return(endrates)
-print(hh(2*second))
+
+    if spikes.count[0] == spikes.count[1]:
+        tau_MS = spikes.spike_trains()[0] - spikes.spike_trains()[1]
+        return(mean(tau_MS), std(tau_MS))
+    else:
+        return (float("NaN")*ms, float("NaN")*ms)
+
+gA_max, gG_max = 15, 15
+heat = zeros((gA_max, gG_max))
+for i in range(gA_max):
+    for j in range(gG_max):
+        heat[i,j] = hh(gA = i*nsiemens, gG = j*nsiemens, plots = False)[0]/ms
+imshow(heat, cmap = 'hot', interpolation = 'nearest'); show()
