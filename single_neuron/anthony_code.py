@@ -53,4 +53,10 @@ heat = zeros((gA_max, gG_max))
 for i in range(gA_max):
     for j in range(gG_max):
         heat[i,j] = hh(gA = i*nsiemens, gG = j*nsiemens, plots = False)[0]/ms
-imshow(heat, cmap = 'hot', interpolation = 'nearest'); show()
+
+heat_ma = ma.array(heat, mask = isnan(heat))
+cmap = matplotlib.cm.seismic; cmap.set_bad('green', 1.)
+imshow(heat_ma, interpolation='nearest', cmap=cmap, vmax = nanmax(abs(heat)), vmin = -nanmax(abs(heat)))
+gca().invert_yaxis()
+xlabel("AMPA synapse conductance (nS)"); ylabel("GABA synapsa conductance (nS)"); title("Tau")
+colorbar(); show()
