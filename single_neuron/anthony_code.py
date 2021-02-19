@@ -1,7 +1,7 @@
 # https://brian2.readthedocs.io/en/stable/examples/IF_curve_Hodgkin_Huxley.html
 from brian2 import *
 
-def hh(duration = 2*second, fr_report = 1*second, plots = True):
+def hh(duration = 2*second, gA = 10*nsiemens, gG = 20*nsiemens, fr_report = 1*second, plots = True):
     start_scope(); area = 20000*umetre**2 
 
     # Parameters
@@ -9,7 +9,7 @@ def hh(duration = 2*second, fr_report = 1*second, plots = True):
     gl, g_na, g_kd = 5e-5*siemens*cm**-2 * area, 100*msiemens*cm**-2 * area, 30*msiemens*cm**-2 * area
     El, EK, ENa = -65*mV, -90*mV, 50*mV
     VT = -63*mV
-    w_e, w_i = .1*msiemens, .4*msiemens # Syanptic weights
+    w_e, w_i = gA, gG # Syanptic weights
     Ee, Ei = 0*mV, -80*mV # Synaptic potentials
     taue, taui = 5*ms, 10*ms # Synapse time constants
 
@@ -24,7 +24,7 @@ def hh(duration = 2*second, fr_report = 1*second, plots = True):
     ''')
 
     group = NeuronGroup(3, eqs, threshold='v > -40*mV', refractory='v > -40*mV', method='exponential_euler')
-    group.v = El; group.Iext = ".5*nA" # Initializing voltage and external current
+    group.v = El; group.Iext = ".32*nA" # Initializing voltage and external current
 
     # Creating spike monitor, voltage monitors, and synapses
     spikes = SpikeMonitor(group)
@@ -38,8 +38,10 @@ def hh(duration = 2*second, fr_report = 1*second, plots = True):
     if plots:
         plot(M.t/ms, M.v[0], "k-", linewidth = .5)
         plot(S.t/ms, S.v[0], "r-", linewidth = .5, alpha = .8)
-        plot(I.t/ms, I.v[0], "g-", linewidth = .5, alpha = .8)
+        plot(I.t/ms, I.v[0], "g--", linewidth = .5, alpha = .8)
+        xlim(1000,1050)
         xlabel('Time (ms)'); ylabel('Voltage (mV)'); show()
     endrates = [len(spikes.spike_trains()[i][spikes.spike_trains()[i]/second > 1])/fr_report for i in range(3)]
+    print(spikes.count / duration)
     return(endrates)
-print(hh())
+print(hh(2*second))
