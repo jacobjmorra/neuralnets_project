@@ -48,15 +48,20 @@ def hh(duration = 2*second, gA = 10*nsiemens, gG = 20*nsiemens, plots = True):
     else:
         return (float("NaN")*ms, float("NaN")*ms)
 
-gA_max, gG_max = 15, 15
-heat = zeros((gA_max, gG_max))
-for i in range(gA_max):
-    for j in range(gG_max):
-        heat[i,j] = hh(gA = i*nsiemens, gG = j*nsiemens, plots = False)[0]/ms
+def heatmap(gA_max, gG_max, step_size):
+    if gA_max % step_size != 0 or gG_max % step_size != 0: return(float("nan"))
 
-heat_ma = ma.array(heat, mask = isnan(heat))
-cmap = matplotlib.cm.seismic; cmap.set_bad('green', 1.)
-imshow(heat_ma, interpolation='nearest', cmap=cmap, vmax = nanmax(abs(heat)), vmin = -nanmax(abs(heat)))
-gca().invert_yaxis()
-xlabel("AMPA synapse conductance (nS)"); ylabel("GABA synapsa conductance (nS)"); title("Tau")
-colorbar(); show()
+    heat = zeros((int(gG_max/step_size)+1, int(gA_max/step_size)+1))
+    for j in range(int(gA_max/step_size)+1):
+        for i in range(int(gG_max/step_size)+1):
+            heat[i,j] = hh(gA = step_size*j*nsiemens, gG = step_size*i*nsiemens, plots = False)[0]/ms
+
+    heat_ma = ma.array(heat, mask = isnan(heat))
+    cmap = matplotlib.cm.seismic; cmap.set_bad('green', 1.)
+    imshow(heat_ma, interpolation='nearest', cmap=cmap, vmax = nanmax(abs(heat)), vmin = -nanmax(abs(heat)))
+    gca().invert_yaxis()
+    xticks(list(range(int(gA_max/step_size)+1)), [step_size*i for i in (range(int(gA_max/step_size)+1))])
+    yticks(list(range(int(gG_max/step_size)+1)), [step_size*i for i in (range(int(gG_max/step_size)+1))])
+    ylabel("GABA synapse conductance (nS)"); xlabel("AMPA synapse conductance (nS)"); title("\u03C4 (ms)")
+    colorbar(); show()
+heatmap(200, 200, 2)
