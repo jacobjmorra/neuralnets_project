@@ -3,7 +3,7 @@ from brian2 import *
 
 def tau_calc(M_spiketrain, S_spiketrain):
     if (len(M_spiketrain) == 0) or (len(S_spiketrain) == 0): return float("NaN")
-    
+
     output = zeros(len(M_spiketrain))
     for i in range(len(M_spiketrain)):
         closest_S_spike = argmin(abs(array(S_spiketrain) - M_spiketrain[i]))
@@ -73,12 +73,26 @@ def heatmap(gA_max, gG_max, step_size):
     ylabel("GABA synapse conductance (nS)"); xlabel("AMPA synapse conductance (nS)"); title("\u03C4 (ms)")
     colorbar(); show()
 
-gG_tau_results, gG_tau_means = [], []
+gA_tau_means = zeros(100)
 for i in range(100):
-    gG_tau_results.append(hh(gG = i*nsiemens, plots=False))
-    gG_tau_means.append(mean(gG_tau_results[i]))
-plot(gG_tau_results, "ko"); plot(gG_tau_means, "k-", alpha = .8)
-xlabel("GABA Synapse Conductance (nS)"); ylabel("\u03C4 (ms)")
+    gA_tau_results = hh(gA = i*nsiemens, plots=False)
+    if not isnan(any(gA_tau_results)):
+        gA_tau_means[i] = mean(gA_tau_results)
+        if not isinstance(gA_tau_results, float):
+            for j in gA_tau_results: plot(i, j, "b.")
+        else:
+            plot(i, gA_tau_results, "b.")
+    else:
+        gA_tau_means[i] = float("NaN")
+
+mask = isfinite(gA_tau_means)
+x_values, y_values = [], []
+for i in range(100):
+    if mask[i] == True:
+        x_values.append(i)
+        y_values.append(gA_tau_means[i])
+plot(x_values, y_values, "k-", linewidth = 3)
+xlabel("AMPA Synapse Conductance (nS)"); ylabel("\u03C4 (ms)")
 show()
 
 # heatmap(10, 10, 2)
