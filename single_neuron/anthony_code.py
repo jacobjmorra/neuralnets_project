@@ -2,6 +2,8 @@
 from brian2 import *
 
 def tau_calc(M_spiketrain, S_spiketrain):
+    if (len(M_spiketrain) == 0) or (len(S_spiketrain) == 0): return float("NaN")
+    
     output = zeros(len(M_spiketrain))
     for i in range(len(M_spiketrain)):
         closest_S_spike = argmin(abs(array(S_spiketrain) - M_spiketrain[i]))
@@ -48,9 +50,11 @@ def hh(duration = 2*second, gA = 10*nsiemens, gG = 20*nsiemens, plots = True):
         plot(S.t/ms, S.v[0], "r-", linewidth = .5, alpha = .8)
         plot(I.t/ms, I.v[0], "g--", linewidth = .5, alpha = .8)
         xlabel('Time (ms)'); ylabel('Voltage (mV)'); show()
+    M_end_spikes = array(spikes.spike_trains()[0]/ms)[array(spikes.spike_trains()[0]/ms) >= ((duration/ms) - 1000)]
+    S_end_spikes = array(spikes.spike_trains()[1]/ms)[array(spikes.spike_trains()[1]/ms) >= ((duration/ms) - 1000)]
+
     
-    taus = tau_calc(spikes.spike_trains()[0]/ms, spikes.spike_trains()[1]/ms)
-    return(mean(taus), std(taus))
+    return tau_calc(M_end_spikes, S_end_spikes)
 
 def heatmap(gA_max, gG_max, step_size):
     if gA_max % step_size != 0 or gG_max % step_size != 0: return(float("nan"))
@@ -58,7 +62,7 @@ def heatmap(gA_max, gG_max, step_size):
     heat = zeros((int(gG_max/step_size)+1, int(gA_max/step_size)+1))
     for j in range(int(gA_max/step_size)+1):
         for i in range(int(gG_max/step_size)+1):
-            heat[i,j] = hh(gA = step_size*j*nsiemens, gG = step_size*i*nsiemens, plots = False)[0]
+            heat[i,j] = mean(hh(gA = step_size*j*nsiemens, gG = step_size*i*nsiemens, plots = False))
 
     heat_ma = ma.array(heat, mask = isnan(heat))
     cmap = matplotlib.cm.seismic; cmap.set_bad('green', 1.)
@@ -69,4 +73,12 @@ def heatmap(gA_max, gG_max, step_size):
     ylabel("GABA synapse conductance (nS)"); xlabel("AMPA synapse conductance (nS)"); title("\u03C4 (ms)")
     colorbar(); show()
 
-heatmap(15, 15, 1)
+gG_tau_results, gG_tau_means = [], []
+for i in range(100):
+    gG_tau_results.append(hh(gG = i*nsiemens, plots=False))
+    gG_tau_means.append(mean(gG_tau_results[i]))
+plot(gG_tau_results, "ko"); plot(gG_tau_means, "k-", alpha = .8)
+xlabel("GABA Synapse Conductance (nS)"); ylabel("\u03C4 (ms)")
+show()
+
+# heatmap(10, 10, 2)
