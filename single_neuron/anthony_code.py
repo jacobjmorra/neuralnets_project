@@ -1,6 +1,13 @@
 # https://brian2.readthedocs.io/en/stable/examples/IF_curve_Hodgkin_Huxley.html
 from brian2 import *
 
+def tau_calc(M_spiketrain, S_spiketrain):
+    output = zeros(len(M_spiketrain))
+    for i in range(len(M_spiketrain)):
+        closest_S_spike = argmin(abs(array(S_spiketrain) - M_spiketrain[i]))
+        output[i] = M_spiketrain[i] - S_spiketrain[closest_S_spike]
+    return(output)
+
 def hh(duration = 2*second, gA = 10*nsiemens, gG = 20*nsiemens, plots = True):
     start_scope(); area = 20000*umetre**2 
 
@@ -41,12 +48,9 @@ def hh(duration = 2*second, gA = 10*nsiemens, gG = 20*nsiemens, plots = True):
         plot(S.t/ms, S.v[0], "r-", linewidth = .5, alpha = .8)
         plot(I.t/ms, I.v[0], "g--", linewidth = .5, alpha = .8)
         xlabel('Time (ms)'); ylabel('Voltage (mV)'); show()
-
-    if spikes.count[0] == spikes.count[1]:
-        tau_MS = spikes.spike_trains()[0] - spikes.spike_trains()[1]
-        return(mean(tau_MS), std(tau_MS))
-    else:
-        return (float("NaN")*ms, float("NaN")*ms)
+    
+    taus = tau_calc(spikes.spike_trains()[0]/ms, spikes.spike_trains()[1]/ms)
+    return(mean(taus), std(taus))
 
 def heatmap(gA_max, gG_max, step_size):
     if gA_max % step_size != 0 or gG_max % step_size != 0: return(float("nan"))
@@ -54,7 +58,7 @@ def heatmap(gA_max, gG_max, step_size):
     heat = zeros((int(gG_max/step_size)+1, int(gA_max/step_size)+1))
     for j in range(int(gA_max/step_size)+1):
         for i in range(int(gG_max/step_size)+1):
-            heat[i,j] = hh(gA = step_size*j*nsiemens, gG = step_size*i*nsiemens, plots = False)[0]/ms
+            heat[i,j] = hh(gA = step_size*j*nsiemens, gG = step_size*i*nsiemens, plots = False)[0]
 
     heat_ma = ma.array(heat, mask = isnan(heat))
     cmap = matplotlib.cm.seismic; cmap.set_bad('green', 1.)
@@ -64,4 +68,5 @@ def heatmap(gA_max, gG_max, step_size):
     yticks(list(range(int(gG_max/step_size)+1)), [step_size*i for i in (range(int(gG_max/step_size)+1))])
     ylabel("GABA synapse conductance (nS)"); xlabel("AMPA synapse conductance (nS)"); title("\u03C4 (ms)")
     colorbar(); show()
-heatmap(200, 200, 2)
+
+heatmap(15, 15, 1)
