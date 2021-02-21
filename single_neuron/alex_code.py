@@ -2,6 +2,7 @@
 
 from brian2 import *
 import numpy as np
+import matplotlib.pyplot as plt
 
 start_scope()
 
@@ -25,8 +26,8 @@ Iext_I = 28e-11 *amp
 Iext_R = 28e-11 *amp # variable
 Iext_values = [Iext_S, Iext_I, Iext_R]
 
-w_e = 0.1*msiemens
-w_i = 0.4*msiemens
+w_e = 1*nsiemens
+w_i = 10*nsiemens #60*nsiemens 40*nsiemens #20*nsiemens
 Ee = 0*mV
 Ei = -80*mV
 taue = 5*ms
@@ -72,11 +73,13 @@ monitorS = SpikeMonitor(group)
 
 run(duration)
 
-# plot(group.I/nA, monitor.count / duration)
-# xlabel('I (nA)')
-# ylabel('Firing rate (sp/s)')
-# show()
+plt.plot()
+suptitle('MSI Neurons', size = 50)
+title('Excitatory Weight = 1nS, Inhibitory Weight = 10nS', size = 40)
+plt.plot(monitorV.v[0], c = 'blue', label = 'Neuron M' )
+plt.plot(monitorV.v[1], c = 'red', label = 'Neuron S')
+plt.plot(monitorV.v[2], c = 'green', label = 'Neuron I')
+xlabel('Time', size = 50), ylabel('Membrane Potential', size = 50)
+legend()
+xticks(size = 30), yticks(size = 30)
 
-plot(monitorV.v[0])
-plot(monitorV.v[1])
-plot(monitorV.v[2])
