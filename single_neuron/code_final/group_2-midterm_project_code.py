@@ -2,7 +2,14 @@
 Midterm Project Code for APPLMATH 9624B/4264B (Introduction to Neural Networks); Instructors: Dr. Lyle Muller, Dr. Marieke Mur
 Group 2 members: Aymee Alvarez-Rivero (S/N: ), Alex Busch (S/N: ), Anthony Cruz (S/N: ), Jacob Morra (S/N: 251117805)
 
+Brief Description:
+The following code illustrates our implementation of [1]; specifically, we highlight the phenomenon that "two identical
+autonomous systems in a master-slave configuration can have Anticipated Synchronization; that is, wherein the slave's
+spiking switches from following the master's spikes (i.e. "Delayed Synchronization [DS]) to preceding them. [1]
 
+Selected Paper:
+[1] F. S. Matias, P. V. Carelli, C. R. Mirasso, and M. Copelli, “Anticipated synchronization in a biologically plausible model of
+neuronal motifs,” Phys. Rev. E Stat. Nonlin. Soft Matter Phys., vol. 84, no. 2 Pt 1, p. 021922, Aug. 2011.
 """
 
 from brian2 import *
