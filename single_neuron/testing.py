@@ -94,8 +94,10 @@ plot()
 for i in range(10):
     plot(monM.t/ms, monM.v.T[:, i*100]/mV)
 ylabel('v')
+plt.show()
 
 plot()
 for i in range(10):
     plot(monS.t/ms, monS.v.T[:, i*100]/mV)
 ylabel('v')
+plt.show()

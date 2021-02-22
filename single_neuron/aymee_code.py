@@ -1,4 +1,4 @@
-s#code for midterm project
+#code for midterm project
 
 from brian2 import *
 import numpy as np
@@ -97,3 +97,4 @@ run( 1 * second, report='text' )
 plot(M.v[0])
 plot(M.v[1])
 plot(M.v[2])
+plt.show()
