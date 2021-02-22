@@ -63,11 +63,13 @@ def MSI(gA, gG):
 
     MSI_spikes = SpikeMonitor(group, record=True)
 
+    #run simulation for .5 seconds
     run(500 * ms)
+
     #print("\nFiring Rates (M/S/I):\t\t%s" % spikes.count / duration)
 
 
-
+    #Uncomment below to plot M,I,S potentials over run time
     """
     #import matplotlib.pyplot as plt
     #plot(M.t/ms, M.v[0], "k-", linewidth = .5)
@@ -78,16 +80,21 @@ def MSI(gA, gG):
     """
 
     return MSI_spikes.spike_trains()[0], MSI_spikes.spike_trains()[1], MSI_spikes.spike_trains()[2]
-    #print(group.spikes)
-    #return(M_spikes.spike_trains()[0], M.v[0], S.t, S.v[0], I.t, I.v[0])
 
 def heatmap(gA_max, gG_max, step_size):
+    """
+    This function creates a heat map ... ( *** will finish this today)
+    :param gA_max:
+    :param gG_max:
+    :param step_size:
+    :return:
+    """
     if gA_max % step_size != 0 or gG_max % step_size != 0: return(float("nan"))
 
     heat = zeros((int(gG_max/step_size)+1, int(gA_max/step_size)+1))
     for j in range(int(gA_max/step_size)+1):
         for i in range(int(gG_max/step_size)+1):
-            heat[i,j] = mean(hh(gA = step_size*j*nsiemens, gG = step_size*i*nsiemens, plots = False))
+            heat[i,j] = mean(MSI(gA = step_size*j*nsiemens, gG = step_size*i*nsiemens))
 
     heat_ma = ma.array(heat, mask = isnan(heat))
     cmap = matplotlib.cm.seismic; cmap.set_bad('green', 1.)
@@ -99,19 +106,26 @@ def heatmap(gA_max, gG_max, step_size):
     colorbar(); show()
 
 def plot_diff(num_incr=19):
-    """Find differences between signals for varying gA from 1 ns to 20 ns, gG = 18"""
+    """
+    The function calculates the differences in ISI spike times between signals for varying gA from 1 ns to 20 ns, gG = 18.
+    The differences between each of M, S, and I spiketrains are plotted, as well as the overall differences.
+    :param num_incr: the number of desired steps of 1 * ns, starting from gA = 1 * ns. i.e. num_incr = 19 would indicate
+    19 steps of 1, and therefore gA would range from 1 * ns to 20 * ns.
+    :return: None
+    """
     import matplotlib.pyplot as plt
 
+    #store all of the gA values, gG is fixed at 18 ns
     gA_list = [1 + i for i in range(num_incr)] * nsiemens
     gG=18 * nsiemens
 
-    #print(gA_list)
-
+    #store all of the ISI differences between M, S, I, and all neurons
     diff_listMS = []
     diff_listSI = []
     diff_listMI = []
     total_diff_list = []
 
+    #for each gA value, compare the M, S, I, and all spiketrains
     for i in range(num_incr):
         #compare the 3 spike_train times for each gA value
         M_spiketrain,S_spiketrain,I_spiketrain = MSI(gA_list[i], gG)
@@ -119,19 +133,20 @@ def plot_diff(num_incr=19):
         #check dims
         #print(M_spiketrain.size, S_spiketrain.size, I_spiketrain.size)
 
+        #for dimensions to work, truncate all vectors to the lowest common size
         max_len_to_consider = min(M_spiketrain.size, S_spiketrain.size, I_spiketrain.size)
 
-        #if not all same, take smallest dimension from all
+        #add differences for particular gA value to respective lists
         diff_listMS.append(np.absolute(S_spiketrain[0:max_len_to_consider]/ms - M_spiketrain[0:max_len_to_consider]/ms))
         diff_listSI.append(np.absolute(I_spiketrain[0:max_len_to_consider]/ms - S_spiketrain[0:max_len_to_consider]/ms))
         diff_listMI.append(np.absolute(I_spiketrain[0:max_len_to_consider]/ms - M_spiketrain[0:max_len_to_consider]/ms))
-
         total_diff_list.append(np.absolute(S_spiketrain[0:max_len_to_consider]/ms - M_spiketrain[0:max_len_to_consider]/ms)
                                + np.absolute(I_spiketrain[0:max_len_to_consider]/ms - S_spiketrain[0:max_len_to_consider]/ms)
                                + np.absolute(I_spiketrain[0:max_len_to_consider]/ms - M_spiketrain[0:max_len_to_consider]/ms))
 
+    #plot the differences in ISIs
 
-    #MS diffs plot
+    #MS differences plot
     fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2,2)
     for i in range(num_incr):
         x = [i for i in range(len(diff_listMS[i]))]
@@ -139,21 +154,21 @@ def plot_diff(num_incr=19):
     ax1.legend(prop={'size': 6})
     ax1.set_title("MS")
 
-    #SI diffs plot
+    #SI differences plot
     for i in range(num_incr):
         x = [i for i in range(len(diff_listSI[i]))]
         ax2.plot(x, diff_listSI[i], label="gA="+str(gA_list[i]))
     ax2.legend(prop={'size': 6})
     ax2.set_title("SI")
 
-    #MI diffs plot
+    #MI differences plot
     for i in range(num_incr):
         x = [i for i in range(len(diff_listMI[i]))]
         ax3.plot(x, diff_listMI[i], label="gA="+str(gA_list[i]))
     ax3.legend(prop={'size': 6})
     ax3.set_title("MI")
 
-    #Total diffs plot
+    #Total differences plot
     for i in range(num_incr):
         x = [i for i in range(len(total_diff_list[i]))]
         ax4.plot(x, total_diff_list[i], label="gA="+str(gA_list[i]))
@@ -161,13 +176,3 @@ def plot_diff(num_incr=19):
     ax4.set_title("Differences (total)")
 
     plt.show()
-
-
-
-#M_ts, S_ts, I_ts = MSI(gA = 10*nsiemens, gG = 20*nsiemens)
-
-#print(M_ts)
-#print(S_ts)
-#print(I_ts)
-
-plot_diff()
