@@ -176,3 +176,19 @@ def plot_diff(num_incr=19):
     ax4.set_title("Differences (total)")
 
     plt.show()
+
+def plot_S_I_diffs(num_incr = 19):
+    """
+    Compare the spiketrain times for previous, current, next spiketrain times on the M neuron from the S neuron at time t
+    :param num_incr: the number of gA values to
+    :return:
+    """
+    import matplotlib.pyplot as plt
+
+    # store all of the gA values, gG is fixed at 18 ns
+    gA_list = [1 + i for i in range(num_incr)] * nsiemens
+    gG = 18 * nsiemens
+
+    # store all of the ISI differences between M, S, I, and all neurons
+    diff_listMS = []
+    diff_listSI = []
