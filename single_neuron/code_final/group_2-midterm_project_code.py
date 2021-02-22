@@ -177,18 +177,82 @@ def plot_diff(num_incr=19):
 
     plt.show()
 
-def plot_S_I_diffs(num_incr = 19):
+def plot_S_I_diffs(gA = 20 * nsiemens):
     """
-    Compare the spiketrain times for previous, current, next spiketrain times on the M neuron from the S neuron at time t
-    :param num_incr: the number of gA values to
-    :return:
+    Compare the spiketrain times for current and next spiketrain times on the M neuron from the S neuron at time t
+    :return: None
     """
     import matplotlib.pyplot as plt
 
-    # store all of the gA values, gG is fixed at 18 ns
-    gA_list = [1 + i for i in range(num_incr)] * nsiemens
+    #initialize parameters
     gG = 18 * nsiemens
 
-    # store all of the ISI differences between M, S, I, and all neurons
-    diff_listMS = []
-    diff_listSI = []
+    # store all of the ISI differences between S neuron and M at time t and time t+1
+    diff_S_to_M_t = []
+    diff_S_to_M_t_next = []
+
+    #get the spiketrains
+    M, S, _ = MSI(gA, gG)
+
+    #is S closer to t, or t+1?
+    #print(M)
+    #print(S)
+
+    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
+
+    # for gA = 10
+    print("gA = 10 ********************************************************************************")
+    gA = 10
+    M, S, _ = MSI(10 * nsiemens, gG)
+    print(M)
+    print(S)
+    for i in range(min(len(M), len(S))-1):
+        #print(i)
+        diff_S_to_M_t.append(abs(M[i]-S[i]))
+        diff_S_to_M_t_next.append(abs((S[i+1]-M[i])))
+    print(diff_S_to_M_t)
+    print(diff_S_to_M_t_next)
+    ax1.plot([i for i in range(len(diff_S_to_M_t))], diff_S_to_M_t, label="S[t] - M[t]")
+    ax1.plot([i for i in range(len(diff_S_to_M_t_next))], diff_S_to_M_t_next, label="S[t+1] - M[t]")
+    ax1.legend()
+    ax1.set_title("Differences between S[t+1] and M[t], S[t] and M[t], gA = " + str(gA))
+
+    # for gA = 15
+    print("gA = 15 ********************************************************************************")
+    gA = 15
+    diff_S_to_M_t = []; diff_S_to_M_t_next = []
+    M, S, _ = MSI(15 * nsiemens, gG)
+    for i in range(min(len(M), len(S))-1):
+        diff_S_to_M_t.append(abs(M[i]-S[i]))
+        diff_S_to_M_t_next.append(abs((S[i+1]-M[i])))
+    ax2.plot([i for i in range(len(diff_S_to_M_t))], diff_S_to_M_t, label="S[t] - M[t]")
+    ax2.plot([i for i in range(len(diff_S_to_M_t_next))], diff_S_to_M_t_next, label="S[t+1] - M[t]")
+    ax2.legend()
+    ax2.set_title("Differences between S[t+1] and M[t], S[t] and M[t], gA = " + str(gA))
+
+    # for gA = 20
+    print("gA = 20 ********************************************************************************")
+    gA = 20
+    M, S, _ = MSI(20 * nsiemens, gG)
+    for i in range(min(len(M), len(S))-1):
+        diff_S_to_M_t.append(abs(M[i]-S[i]))
+        diff_S_to_M_t_next.append(abs((S[i+1]-M[i])))
+    ax3.plot([i for i in range(len(diff_S_to_M_t))], diff_S_to_M_t, label="S[t] - M[t]")
+    ax3.plot([i for i in range(len(diff_S_to_M_t_next))], diff_S_to_M_t_next, label="S[t+1] - M[t]")
+    ax3.legend()
+    ax3.set_title("Differences between S[t+1] and M[t], S[t] and M[t], gA = " + str(gA))
+
+    # for gA = 25
+    print("gA = 25 ********************************************************************************")
+    gA = 25
+    M, S, _ = MSI(25 * nsiemens, gG)
+    for i in range(min(len(M), len(S))-1):
+        diff_S_to_M_t.append(abs(M[i]-S[i]))
+        diff_S_to_M_t_next.append(abs((S[i+1]-M[i])))
+    ax4.plot([i for i in range(len(diff_S_to_M_t))], diff_S_to_M_t, label="S[t] - M[t]")
+    ax4.plot([i for i in range(len(diff_S_to_M_t_next))], diff_S_to_M_t_next, label="S[t+1] - M[t]")
+    ax4.legend()
+    ax4.set_title("Differences between S[t+1] and M[t], S[t] and M[t], gA = " + str(gA))
+    plt.show()
+
+plot_S_I_diffs()
