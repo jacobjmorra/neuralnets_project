@@ -75,6 +75,7 @@ def heatmap(gA_max, gG_max, step_size):
 
 gA_tau_means = zeros(100)
 for i in range(100):
+    print(i)
     gA_tau_results = hh(gA = i*nsiemens, plots=False)
     if not isnan(any(gA_tau_results)):
         gA_tau_means[i] = mean(gA_tau_results)

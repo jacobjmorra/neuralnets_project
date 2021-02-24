@@ -14,6 +14,24 @@ neuronal motifs,” Phys. Rev. E Stat. Nonlin. Soft Matter Phys., vol. 84, no. 2
 
 from brian2 import *
 
+def tau_calc(M_spiketrain, S_spiketrain):
+    """
+    Given a spiketrain for the Master neuron (M_spiketrain) and slave neuron (S_spiketrain), determine the difference
+    in spike time between each slave spike and its closest master spike. The resulting array is returned.
+    :param M_spiketrain: an array of spike times; the spiketrain for the master neuron
+    :param S_spiketrain: an array of spike times; the spiketrain for the slave neuron
+    :return: an array of time differences between each master spike time and its closest slave spike time
+    """
+    # if no spikes, return NaN
+    if (len(M_spiketrain) == 0) or (len(S_spiketrain) == 0): return float("NaN")
+
+    #otherwise, create array of 0's, fill with time differences between each master spike and its closest slave spike
+    output = zeros(len(M_spiketrain))
+    for i in range(len(M_spiketrain)):
+        closest_S_spike = argmin(abs(array(S_spiketrain) - M_spiketrain[i]))
+        output[i] = M_spiketrain[i] - S_spiketrain[closest_S_spike]
+    return(output)
+
 def MSI(gA, gG):
     """
     This function initializes and runs a brian2 simulation which is based off of brian2's Hodgkin-Huxley model (please see
@@ -27,6 +45,7 @@ def MSI(gA, gG):
 
     start_scope()
 
+    #specify area of region (necessary for initialization of parameters Cm, gl, g_na, and g_k)
     area = 20000*umetre**2
 
     # Parameters
@@ -68,7 +87,6 @@ def MSI(gA, gG):
 
     #print("\nFiring Rates (M/S/I):\t\t%s" % spikes.count / duration)
 
-
     #Uncomment below to plot M,I,S potentials over run time
     """
     #import matplotlib.pyplot as plt
@@ -79,22 +97,116 @@ def MSI(gA, gG):
     #plt.show()
     """
 
-    return MSI_spikes.spike_trains()[0], MSI_spikes.spike_trains()[1], MSI_spikes.spike_trains()[2]
+    M_end_spikes = array(MSI_spikes.spike_trains()[0] / ms)[array(MSI_spikes.spike_trains()[0] / ms) >= ((500*ms / ms) - 250)]
+    S_end_spikes = array(MSI_spikes.spike_trains()[1] / ms)[array(MSI_spikes.spike_trains()[1] / ms) >= ((500*ms / ms) - 250)]
+
+    return MSI_spikes.spike_trains()[0], MSI_spikes.spike_trains()[1], MSI_spikes.spike_trains()[2], tau_calc(M_end_spikes, S_end_spikes)
+
+def SRI():
+    """
+    This function runs an alternate simulation of the MSI model. The SRI or "Sender-Receiver-Interneuron" model runs
+    for 1000 * ms and uses a tuned combination of parameters from the brian2 Hodgkin-Huxley example and [1]. The
+    spiketrains for the S, R, and I neurons are plotted. No values are returned.
+    :return: None
+    """
+    start_scope()
+
+    num_neurons = 3
+    duration = 1 * second
+
+    # Parameters
+    area = 20000 * umetre ** 2
+    Cm = 1 * ufarad * cm ** -2 * area
+    gl = 5e-5 * siemens * cm ** -2 * area
+    El = -65 * mV
+    EK = -90 * mV
+    ENa = 50 * mV
+    g_na = 100 * msiemens * cm ** -2 * area
+    g_kd = 30 * msiemens * cm ** -2 * area
+    VT = -63 * mV
+
+    # Constant current, determines neuron excitability
+    Iext_S = 28e-11 * amp
+    Iext_I = 28e-11 * amp
+    Iext_R = 28e-11 * amp  # variable
+    Iext_values = [Iext_S, Iext_I, Iext_R]
+
+    w_e = 1 * nsiemens
+    w_i = 10 * nsiemens  # 60*nsiemens 40*nsiemens #20*nsiemens
+    Ee = 0 * mV
+    Ei = -80 * mV
+    taue = 5 * ms
+    taui = 10 * ms
+
+    # The model
+    eqs = Equations('''
+    dv/dt = (gl*(El-v) - g_na*(m*m*m)*h*(v-ENa) - g_kd*(n*n*n*n)*(v-EK) + Iext + g_e*(Ee-v) + g_i*(Ei-v))/Cm : volt
+    dm/dt = 0.32*(mV**-1)*4*mV/exprel((13.*mV-v+VT)/(4*mV))/ms*(1-m)-0.28*(mV**-1)*5*mV/exprel((v-VT-40.*mV)/(5*mV))/ms*m : 1
+    dn/dt = 0.032*(mV**-1)*5*mV/exprel((15.*mV-v+VT)/(5*mV))/ms*(1.-n)-.5*exp((10.*mV-v+VT)/(40.*mV))/ms*n : 1
+    dh/dt = 0.128*exp((17.*mV-v+VT)/(18.*mV))/ms*(1.-h)-4./(1+exp((40.*mV-v+VT)/(5.*mV)))/ms*h : 1
+    dg_e/dt = -g_e/taue : siemens
+    dg_i/dt = -g_i/taui : siemens
+    Iext : amp
+    ''')
+
+    # Threshold and refractoriness are only used for spike counting
+    group = NeuronGroup(num_neurons, eqs,
+                        threshold='v > -40*mV',
+                        refractory='v > -40*mV',
+                        method='exponential_euler')
+    group.v = El
+    group.Iext = Iext_values
+    # group.I = '0.7*nA * i / num_neurons'
+
+    A = Synapses(group, group, 'w: siemens', on_pre='g_e += w_e')
+
+    # Excitatory synapses from Sender to Reveiver (0 to 1)
+    # and Receiver to Interneuron (1 to 2)
+    A.connect(i=[0, 1], j=[1, 2])
+
+    # Inhibitory synapse
+    G = Synapses(group, group, 'w: siemens', on_pre='g_i += w_i')
+
+    # # Inhibitory synapses from Interneuron to Reveiver (2 to 1)
+    G.connect(i=[2], j=[1])
+
+    # Monitor variables
+    monitorV = StateMonitor(group, 'v', record=True)
+    monitorS = SpikeMonitor(group)
+
+    run(duration)
+
+    plt.plot()
+    suptitle('SRI Neurons', size=20)
+    title('Excitatory Weight = 1nS, Inhibitory Weight = 10nS', size=30)
+    plt.plot(monitorV.v[0], c='blue', label='Neuron S')
+    plt.plot(monitorV.v[1], c='red', label='Neuron R')
+    plt.plot(monitorV.v[2], c='green', label='Neuron I')
+    xlabel('Time', size=20), ylabel('Membrane Potential', size=20)
+    legend()
+    xticks(size=20), yticks(size=20)
+    plt.show()
+
 
 def heatmap(gA_max, gG_max, step_size):
     """
-    This function creates a heat map ... ( *** will finish this today)
-    :param gA_max:
-    :param gG_max:
-    :param step_size:
-    :return:
+    This function creates and plots a heat map of mean AMPA vs GABA synapse conductances based on
+    input gA and gG values in a given range based on the specified step_size parameter.
+    :param gA_max: the max AMPA synaptic conductance to test
+    :param gG_max: the max GABA synaptic conductance to test
+    :param step_size: specifies the number of gA and gG values to test (i.e. 100 if step_size = 10)
+    :return: None
     """
     if gA_max % step_size != 0 or gG_max % step_size != 0: return(float("nan"))
 
     heat = zeros((int(gG_max/step_size)+1, int(gA_max/step_size)+1))
     for j in range(int(gA_max/step_size)+1):
+        print(str(100* (j / (int(gA_max/step_size)+1))) + " % done ...")
         for i in range(int(gG_max/step_size)+1):
-            heat[i,j] = mean(MSI(gA = step_size*j*nsiemens, gG = step_size*i*nsiemens))
+            #store the mean value into a variable
+            _,_,_,mean_value = MSI(gA = step_size*j*nsiemens, gG = step_size*i*nsiemens)
+            #set each mean value as a heat map entry
+            heat[i,j] = mean(mean_value)
 
     heat_ma = ma.array(heat, mask = isnan(heat))
     cmap = matplotlib.cm.seismic; cmap.set_bad('green', 1.)
@@ -104,6 +216,40 @@ def heatmap(gA_max, gG_max, step_size):
     yticks(list(range(int(gG_max/step_size)+1)), [step_size*i for i in (range(int(gG_max/step_size)+1))])
     ylabel("GABA synapse conductance (nS)"); xlabel("AMPA synapse conductance (nS)"); title("\u03C4 (ms)")
     colorbar(); show()
+
+def plot_synapse_conductances():
+    """
+    The function plots average AMPA synaptic conductances vs. time in ms. It tests for a range
+    of gA values (specified within the for loop range) and runs a simulation for each, returning
+    (and ultimately plotting) the mean spike time differences (i.e. tau).
+    :return: None
+    """
+
+    gA = 10 * nsiemens
+    gA_tau_means = zeros(100)
+    for i in range(100):
+        print(str(100* (i / (len(gA_tau_means)))) + " % done...")
+        _,_,_,MSImean = MSI(gA + i * nsiemens, 18 * nsiemens)
+        gA_tau_results = MSImean
+        if not isnan(any(gA_tau_results)):
+            gA_tau_means[i] = mean(gA_tau_results)
+            if not isinstance(gA_tau_results, float):
+                for j in gA_tau_results: plot(i, j, "b.")
+            else:
+                plot(i, gA_tau_results, "b.")
+        else:
+            gA_tau_means[i] = float("NaN")
+
+    mask = isfinite(gA_tau_means)
+    x_values, y_values = [], []
+    for i in range(len(gA_tau_means)):
+        if mask[i] == True:
+            x_values.append(i)
+            y_values.append(gA_tau_means[i])
+    plot(x_values, y_values, "k-", linewidth=3)
+    xlabel("AMPA Synapse Conductance (nS)");
+    ylabel("\u03C4 (ms)")
+    show()
 
 def plot_diff(num_incr=19):
     """
@@ -128,7 +274,7 @@ def plot_diff(num_incr=19):
     #for each gA value, compare the M, S, I, and all spiketrains
     for i in range(num_incr):
         #compare the 3 spike_train times for each gA value
-        M_spiketrain,S_spiketrain,I_spiketrain = MSI(gA_list[i], gG)
+        M_spiketrain,S_spiketrain,I_spiketrain,_ = MSI(gA_list[i], gG)
 
         #check dims
         #print(M_spiketrain.size, S_spiketrain.size, I_spiketrain.size)
@@ -192,7 +338,7 @@ def plot_S_I_diffs(gA = 20 * nsiemens):
     diff_S_to_M_t_next = []
 
     #get the spiketrains
-    M, S, _ = MSI(gA, gG)
+    M, S, _, _ = MSI(gA, gG)
 
     #is S closer to t, or t+1?
     #print(M)
@@ -203,7 +349,7 @@ def plot_S_I_diffs(gA = 20 * nsiemens):
     # for gA = 10
     print("gA = 10 ********************************************************************************")
     gA = 10
-    M, S, _ = MSI(10 * nsiemens, gG)
+    M, S, _, _= MSI(10 * nsiemens, gG)
     print(M)
     print(S)
     for i in range(min(len(M), len(S))-1):
@@ -221,7 +367,7 @@ def plot_S_I_diffs(gA = 20 * nsiemens):
     print("gA = 15 ********************************************************************************")
     gA = 15
     diff_S_to_M_t = []; diff_S_to_M_t_next = []
-    M, S, _ = MSI(15 * nsiemens, gG)
+    M, S, _, _ = MSI(15 * nsiemens, gG)
     for i in range(min(len(M), len(S))-1):
         diff_S_to_M_t.append(abs(M[i]-S[i]))
         diff_S_to_M_t_next.append(abs((S[i+1]-M[i])))
@@ -233,7 +379,7 @@ def plot_S_I_diffs(gA = 20 * nsiemens):
     # for gA = 20
     print("gA = 20 ********************************************************************************")
     gA = 20
-    M, S, _ = MSI(20 * nsiemens, gG)
+    M, S, _, _ = MSI(20 * nsiemens, gG)
     for i in range(min(len(M), len(S))-1):
         diff_S_to_M_t.append(abs(M[i]-S[i]))
         diff_S_to_M_t_next.append(abs((S[i+1]-M[i])))
@@ -245,7 +391,7 @@ def plot_S_I_diffs(gA = 20 * nsiemens):
     # for gA = 25
     print("gA = 25 ********************************************************************************")
     gA = 25
-    M, S, _ = MSI(25 * nsiemens, gG)
+    M, S, _, _ = MSI(25 * nsiemens, gG)
     for i in range(min(len(M), len(S))-1):
         diff_S_to_M_t.append(abs(M[i]-S[i]))
         diff_S_to_M_t_next.append(abs((S[i+1]-M[i])))
@@ -255,4 +401,16 @@ def plot_S_I_diffs(gA = 20 * nsiemens):
     ax4.set_title("Differences between S[t+1] and M[t], S[t] and M[t], gA = " + str(gA))
     plt.show()
 
-plot_S_I_diffs()
+
+"""
+########################################################################################################
+MAIN PROGRAM
+########################################################################################################
+"""
+# ~~~~~~ Uncomment to test functionality ~~~~~~~~
+
+#SRI() #plot the spiketrains
+#plot_diff() #plot differences in spike trains
+#plot_S_I_diffs() #plot prev + current spike train differences
+#plot_synapse_conductances() #plot synaptic conductances vs time
+#heatmap(10,10,2) #plot heat map of mean synaptic conductances

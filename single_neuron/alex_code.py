@@ -82,4 +82,4 @@ plt.plot(monitorV.v[2], c = 'green', label = 'Neuron I')
 xlabel('Time', size = 50), ylabel('Membrane Potential', size = 50)
 legend()
 xticks(size = 30), yticks(size = 30)
-
+plt.show()
